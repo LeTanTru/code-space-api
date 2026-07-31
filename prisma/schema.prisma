@@ -1,138 +1,21 @@
-# Database — Prisma ORM & MySQL 8.0
+// ============================================================================
+// CodeSpace API — Prisma ORM Schema Specification
+// Database Provider: MySQL 8.0+
+// ============================================================================
 
-## Overview
-
-`code-space-api` uses **Prisma ORM (v6.x)** connected to a **MySQL 8.0** relational database. It stores user accounts, settings, workspace presets, sub-terminals, custom CLI tools, custom notification sounds, directory history, and cloud sync logs.
-
----
-
-## Relational Database Diagram (ERD)
-
-```mermaid
-erDiagram
-    users {
-        bigint id PK
-        varchar email UK
-        varchar password_hash
-        varchar name
-        enum role
-        datetime created_at
-        datetime updated_at
-    }
-
-    refresh_tokens {
-        bigint id PK
-        bigint user_id FK
-        varchar token_hash UK
-        varchar device_name
-        datetime expires_at
-        datetime revoked_at
-        datetime created_at
-    }
-
-    user_settings {
-        bigint id PK
-        bigint user_id FK, UK
-        varchar theme
-        varchar font
-        enum tab_orientation
-        smallint terminal_font_size
-        enum terminal_cursor_style
-        boolean terminal_cursor_blink
-        varchar default_directory
-        boolean sound_notifications
-        boolean desktop_notifications
-        varchar selected_sound_id
-        datetime updated_at
-    }
-
-    custom_sounds {
-        varchar id PK
-        bigint user_id FK
-        varchar name
-        longtext data_url
-        int size_bytes
-        datetime created_at
-    }
-
-    cli_tools {
-        varchar id PK
-        bigint user_id FK
-        varchar name
-        varchar command
-        varchar check_command
-        varchar link
-        boolean is_custom
-    }
-
-    cli_builtin_overrides {
-        bigint id PK
-        bigint user_id FK
-        varchar cli_id FK
-        varchar name
-        varchar command
-        varchar check_command
-        varchar link
-    }
-
-    workspace_presets {
-        varchar id PK
-        bigint user_id FK
-        varchar name
-        text description
-        varchar color
-        varchar root_path
-        smallint terminal_count
-        varchar selected_cli FK
-        boolean ide_vscode
-        boolean ide_antigravity
-        json layout
-        bigint created_at
-        bigint updated_at
-    }
-
-    preset_terminals {
-        bigint id PK
-        varchar preset_id FK
-        varchar cli FK
-        varchar cwd
-        varchar custom_title
-        smallint position
-    }
-
-    directory_history {
-        bigint id PK
-        bigint user_id FK
-        varchar path
-        smallint position
-    }
-
-    users ||--o{ refresh_tokens : "has sessions"
-    users ||--o| user_settings : "owns settings"
-    users ||--o{ custom_sounds : "uploads audio"
-    users ||--o{ cli_tools : "creates tools"
-    users ||--o{ cli_builtin_overrides : "overrides built-in"
-    users ||--o{ workspace_presets : "creates presets"
-    users ||--o{ directory_history : "tracks history"
-    cli_tools ||--o| cli_builtin_overrides : "referenced by"
-    cli_tools ||--o{ workspace_presets : "used as default"
-    cli_tools ||--o{ preset_terminals : "used in terminal"
-    workspace_presets ||--o{ preset_terminals : "contains terminals"
-```
-
----
-
-## Core Prisma Schema (`prisma/schema.prisma`)
-
-```prisma
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
+
+// ----------------------------------------------------------------------------
+// Enums
+// ----------------------------------------------------------------------------
 
 enum UserRole {
   USER
@@ -150,11 +33,22 @@ enum TerminalCursorStyle {
   bar
 }
 
+enum SyncStatus {
+  SUCCESS
+  CONFLICT
+  FAILED
+}
+
+// ----------------------------------------------------------------------------
+// 1. Core Authentication & User Entities
+// ----------------------------------------------------------------------------
+
 model User {
   id           BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
   email        String   @unique @db.VarChar(255)
   passwordHash String   @map("password_hash") @db.VarChar(255)
   name         String   @db.VarChar(255)
+  avatarUrl    String?  @map("avatar_url") @db.VarChar(1024)
   role         UserRole @default(USER)
   createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(3)
   updatedAt    DateTime @updatedAt @map("updated_at") @db.DateTime(3)
@@ -166,6 +60,7 @@ model User {
   cliBuiltinOverrides CliBuiltinOverride[]
   workspacePresets    WorkspacePreset[]
   directoryHistories  DirectoryHistory[]
+  syncLogs            SyncLog[]
 
   @@map("users")
 }
@@ -175,6 +70,7 @@ model RefreshToken {
   userId     BigInt    @map("user_id") @db.UnsignedBigInt
   tokenHash  String    @unique @map("token_hash") @db.VarChar(255)
   deviceName String?   @map("device_name") @db.VarChar(255)
+  ipAddress  String?   @map("ip_address") @db.VarChar(45)
   expiresAt  DateTime  @map("expires_at") @db.DateTime(3)
   revokedAt  DateTime? @map("revoked_at") @db.DateTime(3)
   createdAt  DateTime  @default(now()) @map("created_at") @db.DateTime(3)
@@ -184,6 +80,10 @@ model RefreshToken {
   @@index([userId], map: "idx_refresh_tokens_user_id")
   @@map("refresh_tokens")
 }
+
+// ----------------------------------------------------------------------------
+// 2. User Settings Entity (Singleton per User)
+// ----------------------------------------------------------------------------
 
 model UserSettings {
   id                   BigInt              @id @default(autoincrement()) @db.UnsignedBigInt
@@ -198,6 +98,7 @@ model UserSettings {
   soundNotifications   Boolean             @default(true) @map("sound_notifications")
   desktopNotifications Boolean             @default(true) @map("desktop_notifications")
   selectedSoundId      String              @default("default") @map("selected_sound_id") @db.VarChar(128)
+  autoRestoreSession   Boolean             @default(true) @map("auto_restore_session")
   updatedAt            DateTime            @updatedAt @map("updated_at") @db.DateTime(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -205,11 +106,16 @@ model UserSettings {
   @@map("user_settings")
 }
 
+// ----------------------------------------------------------------------------
+// 3. Custom Sound Audio Entities
+// ----------------------------------------------------------------------------
+
 model CustomSound {
   id        String   @id @db.VarChar(128)
   userId    BigInt   @map("user_id") @db.UnsignedBigInt
   name      String   @db.VarChar(255)
   dataUrl   String   @map("data_url") @db.LongText
+  mimeType  String   @default("audio/mpeg") @map("mime_type") @db.VarChar(64)
   sizeBytes Int      @default(0) @map("size_bytes") @db.UnsignedInt
   createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
 
@@ -219,6 +125,10 @@ model CustomSound {
   @@map("custom_sounds")
 }
 
+// ----------------------------------------------------------------------------
+// 4. CLI Tool Definitions & Overrides
+// ----------------------------------------------------------------------------
+
 model CliTool {
   id           String   @id @db.VarChar(128)
   userId       BigInt?  @map("user_id") @db.UnsignedBigInt
@@ -227,12 +137,15 @@ model CliTool {
   checkCommand String?  @map("check_command") @db.VarChar(512)
   link         String?  @db.VarChar(2048)
   isCustom     Boolean  @default(false) @map("is_custom")
+  createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.DateTime(3)
 
   user                  User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
   overrides             CliBuiltinOverride[]
   presetsAsDefault      WorkspacePreset[]
   presetTerminalsAsCli PresetTerminal[]
 
+  @@index([userId], map: "idx_cli_tools_user_id")
   @@map("cli_tools")
 }
 
@@ -244,6 +157,7 @@ model CliBuiltinOverride {
   command      String?  @db.VarChar(512)
   checkCommand String?  @map("check_command") @db.VarChar(512)
   link         String?  @db.VarChar(2048)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.DateTime(3)
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   cliTool CliTool @relation(fields: [cliId], references: [id], onDelete: Cascade)
@@ -251,6 +165,10 @@ model CliBuiltinOverride {
   @@unique([userId, cliId], map: "uq_user_cli_override")
   @@map("cli_builtin_overrides")
 }
+
+// ----------------------------------------------------------------------------
+// 5. Workspace Presets & Preset Sub-Terminals
+// ----------------------------------------------------------------------------
 
 model WorkspacePreset {
   id             String   @id @db.VarChar(128)
@@ -267,9 +185,9 @@ model WorkspacePreset {
   createdAt      BigInt   @map("created_at") @db.UnsignedBigInt
   updatedAt      BigInt   @map("updated_at") @db.UnsignedBigInt
 
-  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  defaultCli CliTool?         @relation(fields: [selectedCli], references: [id], onDelete: SetNull)
-  terminals  PresetTerminal[]
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  defaultCli    CliTool?         @relation(fields: [selectedCli], references: [id], onDelete: SetNull)
+  terminals     PresetTerminal[]
 
   @@index([userId], map: "idx_workspace_presets_user_id")
   @@map("workspace_presets")
@@ -290,15 +208,39 @@ model PresetTerminal {
   @@map("preset_terminals")
 }
 
+// ----------------------------------------------------------------------------
+// 6. Directory History Entity
+// ----------------------------------------------------------------------------
+
 model DirectoryHistory {
-  id       BigInt @id @default(autoincrement()) @db.UnsignedBigInt
-  userId   BigInt @map("user_id") @db.UnsignedBigInt
-  path     String @db.VarChar(512)
-  position Int    @default(0) @db.UnsignedSmallInt
+  id        BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  userId    BigInt   @map("user_id") @db.UnsignedBigInt
+  path      String   @db.VarChar(512)
+  position  Int      @default(0) @db.UnsignedSmallInt
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, path], map: "uq_user_directory_path")
+  @@index([userId, position], map: "idx_directory_history_position")
   @@map("directory_history")
 }
-```
+
+// ----------------------------------------------------------------------------
+// 7. Cloud Sync Auditing Log
+// ----------------------------------------------------------------------------
+
+model SyncLog {
+  id             BigInt     @id @default(autoincrement()) @db.UnsignedBigInt
+  userId         BigInt     @map("user_id") @db.UnsignedBigInt
+  clientDeviceId String     @map("client_device_id") @db.VarChar(255)
+  clientVersion  String     @map("client_version") @db.VarChar(64)
+  status         SyncStatus @default(SUCCESS)
+  payloadSummary String?    @map("payload_summary") @db.VarChar(512)
+  syncedAt       DateTime   @default(now()) @map("synced_at") @db.DateTime(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, syncedAt], map: "idx_sync_logs_user_date")
+  @@map("sync_logs")
+}
