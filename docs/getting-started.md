@@ -1,145 +1,93 @@
 # Getting Started
 
-## Prerequisites
+## Local Setup
 
-- Node.js 22 LTS or newer
-- npm
-- PostgreSQL 16+ (local install or Docker)
+### Prerequisites
 
-Docker is the recommended way to run Postgres locally — see [deployment.md](deployment.md) for the Compose setup.
+- **Node.js**: `v20.x` or higher
+- **npm**: `v10.x` or higher
+- **MySQL**: `v8.0+` (running locally or via Docker)
 
----
+### Installation & Environment
 
-## Clone and Install
+1. Clone the repository and install dependencies:
 
-```bash
-cd code-space-api
-npm install
-```
+   ```bash
+   git clone https://github.com/your-org/code-space-api.git
+   cd code-space-api
+   npm install
+   ```
 
----
+2. Copy the sample environment file:
 
-## Environment Variables
+   ```bash
+   cp .env.example .env
+   ```
 
-Copy `.env.example` to `.env` and fill in all values:
+3. Update `.env` with your local database credentials:
 
-```bash
-cp .env.example .env
-```
+   ```env
+   PORT=4000
+   NODE_ENV=development
+   DATABASE_URL="mysql://root:rootpassword@localhost:3306/codespace_db?parseTime=true"
+   JWT_ACCESS_SECRET="your-super-secret-access-key-32-chars-min"
+   JWT_REFRESH_SECRET="your-super-secret-refresh-key-32-chars-min"
+   ```
 
-### Required Variables
+### Database Migration & Seed
 
-| Variable                  | Description                                          | Example                                         |
-| ------------------------- | ---------------------------------------------------- | ----------------------------------------------- |
-| `DATABASE_URL`            | PostgreSQL connection string (Prisma format)         | `postgresql://user:pass@localhost:5432/csapi_db` |
-| `JWT_ACCESS_SECRET`       | Secret for signing access tokens (≥32 chars)        | `super-secret-access-key-32-chars-min`           |
-| `JWT_REFRESH_SECRET`      | Secret for signing refresh tokens (≥32 chars)       | `super-secret-refresh-key-32-chars-min`          |
-| `JWT_ACCESS_EXPIRES_IN`   | Access token TTL                                     | `15m`                                            |
-| `JWT_REFRESH_EXPIRES_IN`  | Refresh token TTL                                    | `7d`                                             |
-| `PORT`                    | HTTP server port                                     | `4000`                                           |
-| `NODE_ENV`                | Runtime environment                                  | `development`                                    |
-| `CORS_ORIGIN`             | Allowed origin for CORS (desktop app origin)         | `http://localhost:5173`                          |
-
-> **Never commit `.env` to source control.** `.env` is listed in `.gitignore`.
-
----
-
-## Database Setup
-
-### 1. Start PostgreSQL
-
-Using Docker Compose:
+Run initial Prisma migrations to setup the MySQL database schema and seed default CLI tools:
 
 ```bash
-docker compose up postgres -d
-```
-
-Or use an existing local Postgres instance. Update `DATABASE_URL` accordingly.
-
-### 2. Run Migrations
-
-```bash
+# Create and apply migrations
 npx prisma migrate dev --name init
-```
 
-This creates all tables defined in `prisma/schema.prisma`.
-
-### 3. Generate Prisma Client
-
-The `postinstall` script does this automatically on `npm install`. If needed manually:
-
-```bash
+# Generate Prisma Client
 npx prisma generate
+
+# Seed default built-in CLI tools
+npm run seed
 ```
 
----
-
-## Run the Dev Server
+### Running the Server
 
 ```bash
+# Development mode (with live reload via tsx)
 npm run dev
+
+# Production build and run
+npm run build
+npm start
 ```
 
-This starts `tsx watch src/server.ts` — hot-reloads TypeScript without a separate compile step.
-
-The server starts on `http://localhost:4000` by default.
-
 ---
 
-## Commands
+## Docker Workflows
 
-| Command                      | Purpose                                              |
-| ---------------------------- | ---------------------------------------------------- |
-| `npm run dev`                | Start dev server with hot reload (`tsx watch`)       |
-| `npm run build`              | Compile TypeScript to `dist/`                        |
-| `npm start`                  | Run compiled output from `dist/server.js`            |
-| `npm run type-check`         | Run `tsc --noEmit` type check                        |
-| `npm run format`             | Format with Prettier                                 |
-| `npm run format:check`       | Validate Prettier formatting                         |
-| `npx prisma migrate dev`     | Create and apply a new migration                     |
-| `npx prisma migrate deploy`  | Apply pending migrations in production               |
-| `npx prisma generate`        | Regenerate Prisma client after schema changes        |
-| `npx prisma studio`          | Open Prisma GUI to browse database records           |
-
----
-
-## Verify the Server is Running
+To run MySQL 8.0 and the API service inside Docker containers:
 
 ```bash
-curl http://localhost:4000/api/v1/health
-```
+# Launch containers in background
+docker-compose up -d --build
 
-Expected response:
+# View container logs
+docker-compose logs -f api
 
-```json
-{
-  "success": true,
-  "message": "Success",
-  "data": {
-    "status": "ok",
-    "uptime": 3.14,
-    "timestamp": "2026-07-31T07:00:00.000Z"
-  }
-}
+# Tear down containers and volumes
+docker-compose down -v
 ```
 
 ---
 
-## Common Problems
+## npm Commands Reference
 
-### `DATABASE_URL` connection refused
-
-- Confirm PostgreSQL is running: `docker compose ps` or check your local Postgres service.
-- Confirm the port in `DATABASE_URL` matches the running instance (default `5432`).
-
-### Prisma client not found after `npm install`
-
-Run `npx prisma generate` manually. The postinstall hook may have been skipped (e.g. `npm install --ignore-scripts`).
-
-### `Invalid JWT secret` on startup
-
-The Zod env parser rejects secrets shorter than 32 characters. Use longer values in `.env`.
-
-### Type errors in `src/` after schema change
-
-Run `npx prisma generate` to regenerate the Prisma client types, then `npm run type-check`.
+| Command | Action |
+| :--- | :--- |
+| `npm run dev` | Start development server with live reload (`tsx watch`) |
+| `npm run build` | Compile TypeScript source into `dist/` |
+| `npm start` | Execute production build (`node dist/server.js`) |
+| `npm run prisma:generate` | Regenerate Prisma Client types |
+| `npm run prisma:migrate` | Apply dev database migrations |
+| `npm run prisma:studio` | Open interactive Prisma Studio GUI |
+| `npm run seed` | Seed database with initial CLI tools |
+| `npm run test` | Run Vitest suite |

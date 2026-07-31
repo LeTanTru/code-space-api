@@ -1,35 +1,26 @@
 # Documentation
 
-This folder documents the `code-space-api` Node.js backend. Keep it tight — prefer deleting stale sections over accumulating outdated detail.
+This folder documents the core architecture, database models, API contracts, and development workflows for `code-space-api`. The scope is intentionally kept focused so the documentation remains synchronized with the codebase.
 
 ## Guides
 
 - [project-overview.md](project-overview.md)  
-  Purpose, tech stack, source map, and layer responsibilities.
+  Contributor-oriented summary of the API purpose, tech stack, source map, workflows, and constraints.
 
 - [getting-started.md](getting-started.md)  
-  Local setup, environment variables, database seeding, and dev commands.
+  Local setup, environment variables, Prisma database migrations, seeding, and Docker workflows.
 
 - [architecture.md](architecture.md)  
-  Layer model, request lifecycle, and core file roles.
+  Layered architecture, security design (Argon2id + Dual JWT Tokens), request lifecycle, and error handling pipeline.
 
-- [api-reference.md](api-reference.md)  
-  Complete endpoint specification with request/response shapes for all routes.
+- [db.md](db.md)  
+  Complete `schema.prisma` specification for MySQL 8.0, entity relationship diagrams, indexes, and relational mappings.
 
-- [authentication.md](authentication.md)  
-  JWT flow, refresh token rotation, Argon2id hashing, and cookie strategy.
+- [api-guide.md](api-guide.md)  
+  Complete RESTful HTTP endpoint contracts, request/response JSON bodies, query params, and status codes.
 
-- [database.md](database.md)  
-  Prisma schema, model relationships, field defaults, and migration workflow.
-
-- [sync.md](sync.md)  
-  Cloud sync protocol, 14-key snapshot format, and Last-Write-Wins conflict resolution.
-
-- [servercn-components.md](servercn-components.md)  
-  Inventory of all Servercn-pattern modules copied into `src/`, their source spec, and usage guide.
-
-- [deployment.md](deployment.md)  
-  Docker Compose setup, Dockerfile, environment configuration, and production checklist.
+- [sync-guide.md](sync-guide.md)  
+  Offline-first cloud synchronization protocol connecting `code-space-desktop` (`db.json`) and `code-space-api` (MySQL), featuring Last-Write-Wins conflict resolution.
 
 ## Maintenance Rule
 

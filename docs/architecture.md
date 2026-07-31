@@ -1,139 +1,189 @@
 # Architecture
 
-## Layer Model
+## Process Model & Layers
 
-The server follows a strict, unidirectional dependency chain:
-
-```
-HTTP Request
-     │
-     ▼
-[ Routes ]         — mount controllers on paths, apply middleware chains
-     │
-     ▼
-[ Middlewares ]    — auth, rate-limit, validation, error handling
-     │
-     ▼
-[ Controllers ]    — parse req, call service, format response via ApiResponse
-     │
-     ▼
-[ Services ]       — business logic, orchestrate repositories and utils
-     │
-     ▼
-[ Repositories ]   — Prisma data access, one concern per file
-     │
-     ▼
-[ Prisma / PostgreSQL ]
-```
-
-No layer imports from a layer above it. Services never import Express types. Repositories never import service logic.
-
----
-
-## Entry Points
-
-### `src/server.ts`
-
-Imports the Express `app` from `src/app.ts`, creates an `http.Server`, binds to `PORT`, and registers the graceful shutdown handler from `src/utils/shutdown.util.ts`. This is the process entry point.
-
-### `src/app.ts`
-
-Express application factory. Returns a fully configured `Express` instance with:
-
-1. Security headers (`helmet`)
-2. CORS policy (`cors` with `CORS_ORIGIN` env var)
-3. Global rate limiter
-4. Cookie parser
-5. JSON body parser
-6. All routes mounted under `/api/v1`
-7. `globalErrorHandler` registered last
-
----
-
-## Request Lifecycle
-
-1. Request arrives at Express.
-2. Global middleware chain runs (Helmet → CORS → rate-limiter → body-parser).
-3. Router matches the path and method, applies route-level middleware (e.g. `authenticateJwt`, `validateRequest`).
-4. Controller function runs inside `asyncHandler`. It calls a service function.
-5. Service calls one or more repository functions and/or util functions.
-6. Controller calls `ApiResponse.success(...)` or similar to send the response.
-7. If any step throws an `ApiError` or unknown error, `asyncHandler` forwards it to `globalErrorHandler`, which serializes it to JSON.
-
----
-
-## Core Files
-
-| File                                | Role                                                            |
-| ----------------------------------- | --------------------------------------------------------------- |
-| `src/server.ts`                     | HTTP server lifecycle, graceful shutdown                        |
-| `src/app.ts`                        | Express app factory, middleware registration, route mounting    |
-| `src/config/env.ts`                 | Zod env validation — process exits if any var is invalid        |
-| `src/config/database.ts`            | Prisma client singleton                                         |
-| `src/utils/api-error.util.ts`       | `ApiError` — typed error with statusCode and optional errors[]  |
-| `src/utils/async-handler.util.ts`   | `asyncHandler` — prevents unhandled promise rejections          |
-| `src/utils/response.util.ts`        | `ApiResponse` — standardized JSON envelope                      |
-| `src/utils/hash.util.ts`            | Argon2id password hashing                                       |
-| `src/utils/jwt.util.ts`             | JWT sign and verify for access + refresh tokens                 |
-| `src/utils/logger.util.ts`          | Structured logger (request logging, service events)             |
-| `src/utils/shutdown.util.ts`        | SIGTERM/SIGINT handler with Prisma disconnect                   |
-| `src/middlewares/auth.middleware.ts`| Reads `Authorization: Bearer`, verifies token, attaches user    |
-| `src/middlewares/error.middleware.ts`| Maps `ApiError` / unknown errors to JSON                       |
-| `src/middlewares/validate.middleware.ts`| Zod schema validation for request body                     |
-| `src/middlewares/rate-limiter.ts`   | IP-based rate limiting                                          |
-| `src/routes/index.ts`              | Central `/api/v1` router                                        |
-
----
-
-## Error Handling
-
-All errors flow through a single path:
+`code-space-api` is structured into four explicit runtime layers:
 
 ```
-throw ApiError.unauthorized(...)
-        │
-        ▼
-asyncHandler catches the rejection
-        │
-        ▼
-globalErrorHandler serializes to JSON:
+[HTTP Requests]
+      │
+      ▼
+┌───────────┐    1. Router & Middleware (Helmet, Rate Limiter, CORS, JWT Auth)
+│ Router    │
+└─────┬─────┘
+      │
+      ▼
+┌───────────┐    2. Controller Layer (Parses input, validates Zod DTOs)
+│ Controller│
+└─────┬─────┘
+      │
+      ▼
+┌───────────┐    3. Service Layer (Business logic, password verification, transactions)
+│  Service  │
+└─────┬─────┘
+      │
+      ▼
+┌───────────┐    4. Data Layer (Prisma ORM Client -> MySQL 8.0)
+│ Prisma DB │
+└───────────┘
+```
+
+## System Class Diagram
+
+```mermaid
+classDiagram
+    class AuthController {
+        +register(req, res, next)
+        +login(req, res, next)
+        +refresh(req, res, next)
+        +logout(req, res, next)
+        +getMe(req, res, next)
+    }
+
+    class SettingsController {
+        +getSettings(req, res, next)
+        +updateSettings(req, res, next)
+    }
+
+    class PresetController {
+        +getPresets(req, res, next)
+        +createPreset(req, res, next)
+        +updatePreset(req, res, next)
+        +deletePreset(req, res, next)
+    }
+
+    class SyncController {
+        +pushSync(req, res, next)
+        +pullSync(req, res, next)
+    }
+
+    class AuthService {
+        -prisma: PrismaClient
+        +registerUser(data: RegisterUserDto) UserResponseDto
+        +authenticateUser(credentials: LoginUserDto) TokenPairDto
+        +refreshSession(refreshToken: string) TokenPairDto
+        +revokeSession(refreshToken: string) void
+    }
+
+    class SettingsService {
+        -prisma: PrismaClient
+        +getUserSettings(userId: bigint) UserSettingsDto
+        +updateUserSettings(userId: bigint, patch: UpdateSettingsDto) UserSettingsDto
+    }
+
+    class PresetService {
+        -prisma: PrismaClient
+        +listPresets(userId: bigint) PresetDto[]
+        +createPreset(userId: bigint, dto: CreatePresetDto) PresetDto
+        +deletePreset(userId: bigint, presetId: string) void
+    }
+
+    class SyncService {
+        -prisma: PrismaClient
+        +processPushSync(userId: bigint, syncPayload: SyncPushDto) SyncResultDto
+        +generatePullSync(userId: bigint) SyncPullDto
+    }
+
+    class PrismaClient {
+        +user
+        +refreshToken
+        +userSettings
+        +workspacePreset
+        +presetTerminal
+        +cliTool
+        +customSound
+        +$transaction(actions)
+    }
+
+    class AuthMiddleware {
+        +authenticateJwt(req, res, next)
+        +requireRole(role)
+    }
+
+    class AppError {
+        +statusCode: number
+        +errorCode: string
+        +isOperational: boolean
+        +constructor(message, statusCode, errorCode)
+    }
+
+    class ValidationError {
+        +errors: ZodIssue[]
+    }
+
+    AuthController --> AuthService : delegates to
+    SettingsController --> SettingsService : delegates to
+    PresetController --> PresetService : delegates to
+    SyncController --> SyncService : delegates to
+
+    AuthService --> PrismaClient : queries DB via
+    SettingsService --> PrismaClient : queries DB via
+    PresetService --> PrismaClient : queries DB via
+    SyncService --> PrismaClient : queries DB via
+
+    AppError <|-- ValidationError : inherits
+    AuthController ..> AuthMiddleware : protected by
+    SettingsController ..> AuthMiddleware : protected by
+    PresetController ..> AuthMiddleware : protected by
+    SyncController ..> AuthMiddleware : protected by
+```
+
+## Responsibilities
+
+### Middleware Layer
+- Enforce Helmet security headers and CORS whitelisting.
+- Rate-limit endpoint access by IP address.
+- Verify JWT Access Tokens (`Bearer <token>`) and attach `req.user` context.
+- Validate request bodies, params, and queries using Zod schemas.
+- Catch uncaught exceptions in global error handler.
+
+### Controller Layer
+- Unpack HTTP request inputs (`req.body`, `req.params`, `req.query`, `req.user`).
+- Delegate domain tasks to corresponding services.
+- Return standardized JSON response envelopes (`status`, `data`, `message`).
+
+### Service Layer
+- Execute business logic (password hashing via Argon2id, token issuance, preset merging).
+- Wrap multi-table database operations inside Prisma `$transaction()`.
+
+### Prisma Data Layer
+- Abstract MySQL 8.0 queries using type-safe Prisma models.
+- Enforce relational user scoping (`where: { userId }`).
+
+---
+
+## Security Model
+
+### Argon2id Hashing
+Passwords are encrypted using Argon2id with OWASP parameters:
+- Memory: `64 MB` (`65536` KB)
+- Time cost: `3` iterations
+- Parallelism: `4` threads
+
+### Dual JWT Token Pattern
+- **Access Token**: Short-lived (`15m`), passed via `Authorization: Bearer <token>`.
+- **Refresh Token**: Long-lived (`7d`), passed via HTTP-only cookie, stored hashed in `refresh_tokens` database table. Token rotated on every refresh.
+
+---
+
+## Response & Error Format
+
+### Success Response (`HTTP 200 / 201`)
+```json
 {
-  "success": false,
-  "message": "...",
-  "errors": [...],        // optional field-level errors (Zod failures)
-  "stack": "..."          // development only
+  "status": "success",
+  "data": { ... },
+  "message": "Operation completed successfully"
 }
 ```
 
-Operational errors (`isOperational: true`) are expected and mapped to their `statusCode`. Non-operational errors fall back to `500 Internal Server Error`.
-
----
-
-## Authentication Flow
-
-See [authentication.md](authentication.md) for the full sequence. In brief:
-
-- `POST /api/v1/auth/login` returns a short-lived access token in the response body and a long-lived refresh token in an HttpOnly cookie.
-- Protected routes require `Authorization: Bearer <access_token>`.
-- `authenticateJwt` middleware verifies the token and attaches `{ userId, email }` to `req.user`.
-- `POST /api/v1/auth/refresh` exchanges the cookie refresh token for a new access token and rotates the refresh token (token family pattern).
-
----
-
-## Sync Architecture
-
-See [sync.md](sync.md) for the full protocol. In brief:
-
-- `GET /api/v1/sync/pull` — assembles all 14 CodeSpace DB keys from relational tables into a single JSON snapshot.
-- `POST /api/v1/sync/push` — decomposes incoming DB key delta into individual Prisma upserts. Last-Write-Wins is enforced at the service layer using `updatedAt` timestamps.
-
----
-
-## Documentation Boundary
-
-This file stays intentionally high level. Exact request/response shapes belong in:
-
-- [api-reference.md](api-reference.md)
-- [authentication.md](authentication.md)
-- [sync.md](sync.md)
-- [database.md](database.md)
+### Error Response (`HTTP 4xx / 5xx`)
+```json
+{
+  "status": "error",
+  "error": {
+    "code": "RESOURCE_NOT_FOUND",
+    "message": "Requested preset was not found"
+  }
+}
+```
