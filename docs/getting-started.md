@@ -81,13 +81,13 @@ docker-compose down -v
 
 ## npm Commands Reference
 
-| Command | Action |
-| :--- | :--- |
-| `npm run dev` | Start development server with live reload (`tsx watch`) |
-| `npm run build` | Compile TypeScript source into `dist/` |
-| `npm start` | Execute production build (`node dist/server.js`) |
-| `npm run prisma:generate` | Regenerate Prisma Client types |
-| `npm run prisma:migrate` | Apply dev database migrations |
-| `npm run prisma:studio` | Open interactive Prisma Studio GUI |
-| `npm run seed` | Seed database with initial CLI tools |
-| `npm run test` | Run Vitest suite |
+| Command                   | Action                                                  |
+| :------------------------ | :------------------------------------------------------ |
+| `npm run dev`             | Start development server with live reload (`tsx watch`) |
+| `npm run build`           | Compile TypeScript source into `dist/`                  |
+| `npm start`               | Execute production build (`node dist/server.js`)        |
+| `npm run prisma:generate` | Regenerate Prisma Client types                          |
+| `npm run prisma:migrate`  | Apply dev database migrations                           |
+| `npm run prisma:studio`   | Open interactive Prisma Studio GUI                      |
+| `npm run seed`            | Seed database with initial CLI tools                    |
+| `npm run test`            | Run Vitest suite                                        |

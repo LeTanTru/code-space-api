@@ -6,16 +6,16 @@
 
 ## Tech Stack
 
-| Component | Technology | Version | Purpose |
-| :--- | :--- | :--- | :--- |
-| **Runtime** | Node.js | v20.x LTS | Server execution environment |
-| **Language** | TypeScript | v5.x | Static typing and interfaces |
-| **Framework** | Express.js | v4.x | RESTful API HTTP routing |
-| **Database** | MySQL | v8.0 | Relational database storage |
-| **ORM** | Prisma | v6.x | Type-safe database queries & migrations |
-| **Authentication** | Argon2id + JWT | `argon2`, `jsonwebtoken` | Password hashing & dual-token access control |
-| **Validation** | Zod | v3.x | Request payload & environment schema validation |
-| **Security** | Helmet, CORS, Rate-Limit | v8.x, v2.x, v7.x | HTTP security headers & IP rate limiting |
+| Component          | Technology               | Version                  | Purpose                                         |
+| :----------------- | :----------------------- | :----------------------- | :---------------------------------------------- |
+| **Runtime**        | Node.js                  | v20.x LTS                | Server execution environment                    |
+| **Language**       | TypeScript               | v5.x                     | Static typing and interfaces                    |
+| **Framework**      | Express.js               | v4.x                     | RESTful API HTTP routing                        |
+| **Database**       | MySQL                    | v8.0                     | Relational database storage                     |
+| **ORM**            | Prisma                   | v6.x                     | Type-safe database queries & migrations         |
+| **Authentication** | Argon2id + JWT           | `argon2`, `jsonwebtoken` | Password hashing & dual-token access control    |
+| **Validation**     | Zod                      | v3.x                     | Request payload & environment schema validation |
+| **Security**       | Helmet, CORS, Rate-Limit | v8.x, v2.x, v7.x         | HTTP security headers & IP rate limiting        |
 
 ## Source Map
 

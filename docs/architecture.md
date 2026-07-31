@@ -131,6 +131,7 @@ classDiagram
 ## Responsibilities
 
 ### Middleware Layer
+
 - Enforce Helmet security headers and CORS whitelisting.
 - Rate-limit endpoint access by IP address.
 - Verify JWT Access Tokens (`Bearer <token>`) and attach `req.user` context.
@@ -138,15 +139,18 @@ classDiagram
 - Catch uncaught exceptions in global error handler.
 
 ### Controller Layer
+
 - Unpack HTTP request inputs (`req.body`, `req.params`, `req.query`, `req.user`).
 - Delegate domain tasks to corresponding services.
 - Return standardized JSON response envelopes (`status`, `data`, `message`).
 
 ### Service Layer
+
 - Execute business logic (password hashing via Argon2id, token issuance, preset merging).
 - Wrap multi-table database operations inside Prisma `$transaction()`.
 
 ### Prisma Data Layer
+
 - Abstract MySQL 8.0 queries using type-safe Prisma models.
 - Enforce relational user scoping (`where: { userId }`).
 
@@ -155,12 +159,15 @@ classDiagram
 ## Security Model
 
 ### Argon2id Hashing
+
 Passwords are encrypted using Argon2id with OWASP parameters:
+
 - Memory: `64 MB` (`65536` KB)
 - Time cost: `3` iterations
 - Parallelism: `4` threads
 
 ### Dual JWT Token Pattern
+
 - **Access Token**: Short-lived (`15m`), passed via `Authorization: Bearer <token>`.
 - **Refresh Token**: Long-lived (`7d`), passed via HTTP-only cookie, stored hashed in `refresh_tokens` database table. Token rotated on every refresh.
 
@@ -169,6 +176,7 @@ Passwords are encrypted using Argon2id with OWASP parameters:
 ## Response & Error Format
 
 ### Success Response (`HTTP 200 / 201`)
+
 ```json
 {
   "status": "success",
@@ -178,6 +186,7 @@ Passwords are encrypted using Argon2id with OWASP parameters:
 ```
 
 ### Error Response (`HTTP 4xx / 5xx`)
+
 ```json
 {
   "status": "error",
