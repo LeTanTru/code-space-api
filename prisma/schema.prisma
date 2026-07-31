@@ -199,10 +199,11 @@ model PresetTerminal {
   cli         String? @db.VarChar(128)
   cwd         String  @db.VarChar(1024)
   customTitle String? @map("custom_title") @db.VarChar(255)
+  command     String? @db.VarChar(512)
   position    Int     @default(0) @db.UnsignedSmallInt
 
   preset  WorkspacePreset @relation(fields: [presetId], references: [id], onDelete: Cascade)
-  cliTool CliTool?         @relation(fields: [cli], references: [id], onDelete: SetNull)
+  cliTool CliTool?        @relation(fields: [cli], references: [id], onDelete: SetNull)
 
   @@index([presetId], map: "idx_preset_terminals_preset_id")
   @@map("preset_terminals")
@@ -215,7 +216,7 @@ model PresetTerminal {
 model DirectoryHistory {
   id        BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
   userId    BigInt   @map("user_id") @db.UnsignedBigInt
-  path      String   @db.VarChar(512)
+  path      String   @db.VarChar(1024)
   position  Int      @default(0) @db.UnsignedSmallInt
   updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
 
