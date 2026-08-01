@@ -9,7 +9,7 @@ export class ResponseMetaDto {
   @ApiProperty({ description: 'API version identifier', example: API_META_DEFAULTS.VERSION })
   version: string;
 
-  @ApiPropertyOptional({ description: 'Request URL path', example: '/api/v1/auth/login' })
+  @ApiPropertyOptional({ description: 'Request URL path', example: '/api/v1/endpoint' })
   path?: string;
 }
 
@@ -45,8 +45,7 @@ export class SingleResponseDto<T> {
   data: T;
 
   @ApiPropertyOptional({
-    description: 'Optional human-readable response message',
-    example: 'Resource retrieved successfully',
+    description: 'Human-readable response message',
   })
   message?: string;
 
@@ -56,7 +55,9 @@ export class SingleResponseDto<T> {
   constructor(data: T, message?: string) {
     this.status = RESPONSE_STATUS.SUCCESS;
     this.data = data;
-    this.message = message || 'Resource retrieved successfully';
+    if (message) {
+      this.message = message;
+    }
     this.meta = {
       timestamp: Date.now(),
       version: API_META_DEFAULTS.VERSION,
@@ -76,8 +77,7 @@ export class ListResponseDto<T> {
   data: T[];
 
   @ApiPropertyOptional({
-    description: 'Optional human-readable response message',
-    example: 'Resources retrieved successfully',
+    description: 'Human-readable response message',
   })
   message?: string;
 
@@ -94,7 +94,9 @@ export class ListResponseDto<T> {
     const totalPages = Math.ceil(total / limit) || 1;
     this.status = RESPONSE_STATUS.SUCCESS;
     this.data = data;
-    this.message = message || 'Resources retrieved successfully';
+    if (message) {
+      this.message = message;
+    }
     this.meta = {
       total,
       page,
@@ -119,19 +121,20 @@ export class MutateResponseDto<T = any> {
   @ApiPropertyOptional({ description: 'Mutated resource object payload' })
   data?: T;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Mutation status message',
-    example: 'Operation completed successfully',
   })
-  message: string;
+  message?: string;
 
   @ApiProperty({ type: () => ResponseMetaDto })
   meta: ResponseMetaDto;
 
-  constructor(message: string = 'Operation completed successfully', data?: T) {
+  constructor(message?: string, data?: T) {
     this.status = RESPONSE_STATUS.SUCCESS;
     this.data = data;
-    this.message = message;
+    if (message) {
+      this.message = message;
+    }
     this.meta = {
       timestamp: Date.now(),
       version: API_META_DEFAULTS.VERSION,
@@ -147,18 +150,19 @@ export class NoDataResponseDto {
   @ApiProperty({ description: 'Response status indicator', example: RESPONSE_STATUS.SUCCESS })
   status: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Action status message',
-    example: 'Operation completed successfully',
   })
-  message: string;
+  message?: string;
 
   @ApiProperty({ type: () => ResponseMetaDto })
   meta: ResponseMetaDto;
 
-  constructor(message: string = 'Operation completed successfully') {
+  constructor(message?: string) {
     this.status = RESPONSE_STATUS.SUCCESS;
-    this.message = message;
+    if (message) {
+      this.message = message;
+    }
     this.meta = {
       timestamp: Date.now(),
       version: API_META_DEFAULTS.VERSION,

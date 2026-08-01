@@ -5,6 +5,7 @@
 - **Base URL**: `/api/v1`
 - **Content-Type**: `application/json`
 - **Auth Header**: `Authorization: Bearer <AccessToken>`
+- **Interactive Docs**: Available at `/api/docs` (Swagger UI) when server is running.
 
 ---
 
@@ -18,17 +19,22 @@ All HTTP responses returned by `code-space-api` follow standardized JSON structu
 {
   "status": "success",
   "data": { ... },
-  "message": "Operation completed successfully",
+  "message": "Login successfully",
   "meta": {
     "timestamp": 1785568167359,
-    "version": "v1"
+    "version": "v1",
+    "path": "/api/v1/auth/login"
   }
 }
 ```
 
+> `message` is set per-endpoint via `@ResponseMessage('...')`. If the decorator is absent, the field is omitted from the response.
+
+> `meta.path` reflects the actual request path at runtime.
+
 ### Error Response Format
 
-Error responses omit `data: null` and return a domain-specific `code` string for application error handling:
+Error responses omit `data` and return a domain-specific `code` string for application error handling:
 
 ```json
 {
@@ -73,7 +79,8 @@ Below is the dictionary of standardized `code` values returned in error payloads
 
 Detailed REST endpoint contracts are documented in module-specific guides:
 
-- **Authentication**: [`docs/auth-api.md`](auth-api.md) (`/auth/login`, `/auth/register`, `/auth/verify-email`, `/auth/refresh`, `/auth/logout`, `/auth/forgot-password`, `/auth/reset-password`)
-- **Account Management**: [`docs/account-api.md`](account-api.md) (`/account/profile`, `/account/change-password`, `/account/session`, `/account/delete`)
-- **Health Indicators**: [`docs/health-api.md`](health-api.md) (`/health`)
-- **Rate Limiting**: [`docs/rate-limiter.md`](rate-limiter.md) (Throttling limits & HTTP 429 specs)
+- **Authentication**: [`docs/auth-api.md`](auth-api.md) — `login`, `register`, `verify-email`, `refresh`, `logout`, `forgot-password`, `reset-password`
+- **Account Management**: [`docs/account-api.md`](account-api.md) — `GET profile`, `PUT update/profile`, `POST change-password`, `DELETE delete`
+- **Session Management**: [`docs/session-api.md`](session-api.md) — `GET session/list`, `DELETE session/delete/:id`
+- **Health Indicators**: [`docs/health-api.md`](health-api.md) — `GET /health`
+- **Rate Limiting**: [`docs/rate-limiter.md`](rate-limiter.md) — Throttling limits & HTTP 429 specs

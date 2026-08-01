@@ -9,23 +9,45 @@ import {
   PaginationMetaDto,
 } from '@/common/dtos/api-response.dto';
 
+const createOverrides = (description?: string, path?: string) => {
+  const props: Record<string, any> = {};
+  if (description) {
+    props.message = { type: 'string', example: description };
+  }
+  if (path) {
+    props.meta = {
+      type: 'object',
+      properties: {
+        timestamp: { type: 'number', example: 1785500000000 },
+        version: { type: 'string', example: 'v1' },
+        path: { type: 'string', example: path },
+      },
+    };
+  }
+  return props;
+};
+
 /**
  * Swagger decorator for Single Query Response DTOs
  */
 export const ApiSingleResponse = <TModel extends Type<any>>(
   model: TModel,
-  status = HttpStatus.OK
+  status = HttpStatus.OK,
+  description?: string,
+  path?: string
 ) => {
   return applyDecorators(
     ApiExtraModels(SingleResponseDto, ResponseMetaDto, model),
     ApiResponse({
       status,
+      description,
       schema: {
         allOf: [
           { $ref: getSchemaPath(SingleResponseDto) },
           {
             properties: {
               data: { $ref: getSchemaPath(model) },
+              ...createOverrides(description, path),
             },
           },
         ],
@@ -39,12 +61,15 @@ export const ApiSingleResponse = <TModel extends Type<any>>(
  */
 export const ApiListResponse = <TModel extends Type<any>>(
   model: TModel,
-  status = HttpStatus.OK
+  status = HttpStatus.OK,
+  description?: string,
+  path?: string
 ) => {
   return applyDecorators(
     ApiExtraModels(ListResponseDto, PaginationMetaDto, model),
     ApiResponse({
       status,
+      description,
       schema: {
         allOf: [
           { $ref: getSchemaPath(ListResponseDto) },
@@ -54,6 +79,7 @@ export const ApiListResponse = <TModel extends Type<any>>(
                 type: 'array',
                 items: { $ref: getSchemaPath(model) },
               },
+              ...createOverrides(description, path),
             },
           },
         ],
@@ -67,19 +93,23 @@ export const ApiListResponse = <TModel extends Type<any>>(
  */
 export const ApiMutateResponse = <TModel extends Type<any>>(
   model?: TModel,
-  status = HttpStatus.OK
+  status = HttpStatus.OK,
+  description?: string,
+  path?: string
 ) => {
   if (model) {
     return applyDecorators(
       ApiExtraModels(MutateResponseDto, ResponseMetaDto, model),
       ApiResponse({
         status,
+        description,
         schema: {
           allOf: [
             { $ref: getSchemaPath(MutateResponseDto) },
             {
               properties: {
                 data: { $ref: getSchemaPath(model) },
+                ...createOverrides(description, path),
               },
             },
           ],
@@ -92,8 +122,14 @@ export const ApiMutateResponse = <TModel extends Type<any>>(
     ApiExtraModels(MutateResponseDto, ResponseMetaDto),
     ApiResponse({
       status,
+      description,
       schema: {
-        $ref: getSchemaPath(MutateResponseDto),
+        allOf: [
+          { $ref: getSchemaPath(MutateResponseDto) },
+          {
+            properties: createOverrides(description, path),
+          },
+        ],
       },
     })
   );
@@ -102,13 +138,19 @@ export const ApiMutateResponse = <TModel extends Type<any>>(
 /**
  * Swagger decorator for No-Data Mutate Response DTOs (Delete, Logout, Actions returning no data)
  */
-export const ApiNoDataResponse = (status = HttpStatus.OK) => {
+export const ApiNoDataResponse = (status = HttpStatus.OK, description?: string, path?: string) => {
   return applyDecorators(
     ApiExtraModels(NoDataResponseDto, ResponseMetaDto),
     ApiResponse({
       status,
+      description,
       schema: {
-        $ref: getSchemaPath(NoDataResponseDto),
+        allOf: [
+          { $ref: getSchemaPath(NoDataResponseDto) },
+          {
+            properties: createOverrides(description, path),
+          },
+        ],
       },
     })
   );

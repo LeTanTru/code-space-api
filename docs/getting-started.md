@@ -13,7 +13,7 @@
 1. Clone the repository and install dependencies:
 
    ```bash
-   git clone https://github.com/your-org/code-space-api.git
+   git clone https://github.com/LeTanTru/code-space-api.git
    cd code-space-api
    npm install
    ```
@@ -24,41 +24,59 @@
    cp .env.example .env
    ```
 
-3. Update `.env` with your local database credentials:
+3. Update `.env` with your local configuration:
 
    ```env
    PORT=8080
    NODE_ENV=development
-   DATABASE_URL="mysql://root:rootpassword@localhost:3306/codespace_db?parseTime=true"
+
+   # Database
+   DATABASE_URL="mysql://root:rootpassword@localhost:3306/codespace_db"
+
+   # JWT Secrets (min 32 chars)
    JWT_ACCESS_SECRET="your-super-secret-access-key-32-chars-min"
    JWT_REFRESH_SECRET="your-super-secret-refresh-key-32-chars-min"
+   JWT_ACCESS_EXPIRES_IN="15m"
+   JWT_REFRESH_EXPIRES_IN="7d"
+
+   # SMTP Email (optional — emails are logged to console if not set)
+   SMTP_HOST=smtp.gmail.com
+   SMTP_PORT=587
+   SMTP_SECURE=false
+   SMTP_USER=your@gmail.com
+   SMTP_PASS=your-app-password
+   SMTP_FROM="CodeSpace <no-reply@codespace.dev>"
+
+   # Rate Limiting
+   THROTTLE_TTL=60000
+   THROTTLE_LIMIT=60
    ```
 
 ### Database Migration & Seed
 
-Run initial Prisma migrations to setup the MySQL database schema and seed default CLI tools:
+Run initial Prisma migrations to set up the MySQL database schema:
 
 ```bash
-# Create and apply migrations
+# Apply migrations and generate Prisma Client
 npx prisma migrate dev --name init
 
-# Generate Prisma Client
-npx prisma generate
-
-# Seed default built-in CLI tools
+# Seed default data
 npm run seed
 ```
 
 ### Running the Server
 
 ```bash
-# Development mode (with live reload via tsx)
-npm run dev
+# Development mode (with live reload via ts-jest / NestJS watch)
+npm run start:dev
 
 # Production build and run
 npm run build
-npm start
+npm run start:prod
 ```
+
+The API will be available at `http://localhost:8080/api/v1`.  
+Interactive Swagger documentation is available at `http://localhost:8080/api/docs`.
 
 ---
 
@@ -81,13 +99,15 @@ docker-compose down -v
 
 ## npm Commands Reference
 
-| Command                   | Action                                                  |
-| :------------------------ | :------------------------------------------------------ |
-| `npm run dev`             | Start development server with live reload (`tsx watch`) |
-| `npm run build`           | Compile TypeScript source into `dist/`                  |
-| `npm start`               | Execute production build (`node dist/server.js`)        |
-| `npm run prisma:generate` | Regenerate Prisma Client types                          |
-| `npm run prisma:migrate`  | Apply dev database migrations                           |
-| `npm run prisma:studio`   | Open interactive Prisma Studio GUI                      |
-| `npm run seed`            | Seed database with initial CLI tools                    |
-| `npm run test`            | Run Vitest suite                                        |
+| Command                  | Action                                    |
+| :----------------------- | :---------------------------------------- |
+| `npm run start:dev`      | Start development server with live reload |
+| `npm run build`          | Compile TypeScript source into `dist/`    |
+| `npm run start:prod`     | Execute production build from `dist/`     |
+| `npm test`               | Run Jest test suite                       |
+| `npm run format`         | Format all source files with Prettier     |
+| `npm run lint`           | Lint all source files with ESLint         |
+| `npx prisma migrate dev` | Apply dev database migrations             |
+| `npx prisma generate`    | Regenerate Prisma Client types            |
+| `npx prisma studio`      | Open interactive Prisma Studio GUI        |
+| `npm run seed`           | Seed database with initial data           |
