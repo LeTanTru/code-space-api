@@ -2,6 +2,7 @@ import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nes
 import { Reflector } from '@nestjs/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { Request } from 'express';
 import { RESPONSE_MESSAGE_KEY } from '@/common/decorators/response-message.decorator';
 import { RESPONSE_STATUS, API_META_DEFAULTS } from '@/constants/response';
 
@@ -12,6 +13,7 @@ export type ResponseEnvelope<T> = {
   meta: {
     timestamp: number;
     version: string;
+    path?: string;
   };
 };
 
@@ -20,24 +22,29 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, ResponseEnvelo
   constructor(private readonly reflector: Reflector) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<ResponseEnvelope<T>> {
-    // Read per-route @ResponseMessage() metadata, falling back to default
-    const customMessage = this.reflector.getAllAndOverride<string>(RESPONSE_MESSAGE_KEY, [
+    // Read per-route @ResponseMessage() metadata
+    const message = this.reflector.getAllAndOverride<string>(RESPONSE_MESSAGE_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
 
-    const message = customMessage || 'Operation completed successfully';
+    const request = context.switchToHttp().getRequest<Request>();
+    const path = request?.originalUrl || request?.url;
 
     return next.handle().pipe(
       map((response) => {
+        const finalMessage = message || response?.message;
+
         // If response already matches response envelope structure, pass through
         if (response && response.status === RESPONSE_STATUS.SUCCESS && 'data' in response) {
           return {
             ...response,
-            message: response.message || message,
-            meta: response.meta || {
+            ...(finalMessage ? { message: finalMessage } : {}),
+            meta: {
               timestamp: Date.now(),
               version: API_META_DEFAULTS.VERSION,
+              path,
+              ...response.meta,
             },
           };
         }
@@ -45,10 +52,11 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, ResponseEnvelo
         return {
           status: RESPONSE_STATUS.SUCCESS,
           data: response,
-          message,
+          ...(finalMessage ? { message: finalMessage } : {}),
           meta: {
             timestamp: Date.now(),
             version: API_META_DEFAULTS.VERSION,
+            path,
           },
         };
       })

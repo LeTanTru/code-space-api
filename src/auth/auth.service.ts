@@ -229,7 +229,11 @@ export class AuthService {
       },
     });
 
-    await this.mailService.sendVerificationEmail(dto.email, code);
+    void this.mailService.sendVerificationEmail(dto.email, code, dto.name).catch((err: Error) => {
+      this.logger.error(
+        `Background verification email delivery failed for ${dto.email}: ${err.message}`
+      );
+    });
 
     this.logger.log(`New user registered (unverified): ${dto.email}`);
 
@@ -272,7 +276,7 @@ export class AuthService {
     });
 
     this.logger.log(`Email verified for user: ${dto.email}`);
-    return { message: 'Email verified successfully' };
+    return { message: 'Verify email successfully' };
   }
 
   /**
@@ -364,28 +368,32 @@ export class AuthService {
   }
 
   /**
-   * Request a password reset code. Always returns 200 to prevent email enumeration.
+   * Request a password reset code. Validates email existence before sending OTP.
    */
-  async forgotPassword(email: string): Promise<{ message: string }> {
+  async forgotPassword(email: string): Promise<void> {
     const user = await this.prisma.user.findUnique({
       where: { email },
-      select: { id: true },
+      select: { id: true, name: true },
     });
 
-    if (user) {
-      const code = this.generateOtp();
-      await this.prisma.passwordResetToken.create({
-        data: {
-          email,
-          codeHash: this.sha256(code),
-          expiresAt: new Date(Date.now() + OTP_TTL_MS),
-        },
-      });
-
-      await this.mailService.sendPasswordResetEmail(email, code);
+    if (!user) {
+      throw new NotFoundException('Email not registered');
     }
 
-    return { message: 'If this email is registered, a reset code has been sent.' };
+    const code = this.generateOtp();
+    await this.prisma.passwordResetToken.create({
+      data: {
+        email,
+        codeHash: this.sha256(code),
+        expiresAt: new Date(Date.now() + OTP_TTL_MS),
+      },
+    });
+
+    void this.mailService.sendPasswordResetEmail(email, code, user.name).catch((err: Error) => {
+      this.logger.error(
+        `Background password reset email delivery failed for ${email}: ${err.message}`
+      );
+    });
   }
 
   /**
@@ -434,7 +442,7 @@ export class AuthService {
     });
 
     this.logger.log(`Password reset completed for user: ${dto.email}`);
-    return { message: 'Password updated successfully' };
+    return { message: 'Reset password successfully' };
   }
 
   /**

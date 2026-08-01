@@ -49,18 +49,16 @@ describe('AuthController', () => {
               role: UserRole.USER,
               createdAt: new Date('2026-08-01T11:45:00.000Z'),
             }),
-            verifyEmail: jest.fn().mockResolvedValue({ message: 'Email verified successfully' }),
+            verifyEmail: jest.fn().mockResolvedValue({ message: 'Verify email successfully' }),
             refresh: jest.fn().mockResolvedValue({
               accessToken: 'mocked-jwt-access-token',
               tokenType: 'Bearer',
               expiresIn: MOCK_EXPIRES_IN,
             }),
             logout: jest.fn().mockResolvedValue(undefined),
-            forgotPassword: jest.fn().mockResolvedValue({
-              message: 'If this email is registered, a reset code has been sent.',
-            }),
+            forgotPassword: jest.fn().mockResolvedValue(undefined),
             resetPassword: jest.fn().mockResolvedValue({
-              message: 'Password updated successfully',
+              message: 'Reset password successfully',
             }),
             revokeSession: jest.fn().mockResolvedValue(undefined),
             getMe: jest.fn().mockResolvedValue({
@@ -136,7 +134,7 @@ describe('AuthController', () => {
       const result = await controller.verifyEmail(dto);
 
       expect(authService.verifyEmail).toHaveBeenCalledWith(dto);
-      expect(result).toEqual({ message: 'Email verified successfully' });
+      expect(result).toEqual({ message: 'Verify email successfully' });
     });
   });
 
@@ -177,7 +175,7 @@ describe('AuthController', () => {
       const result = await controller.forgotPassword(dto);
 
       expect(authService.forgotPassword).toHaveBeenCalledWith(dto.email);
-      expect(result.message).toEqual('If this email is registered, a reset code has been sent.');
+      expect(result).toBeUndefined();
     });
   });
 
@@ -192,7 +190,7 @@ describe('AuthController', () => {
       const result = await controller.resetPassword(dto);
 
       expect(authService.resetPassword).toHaveBeenCalledWith(dto);
-      expect(result.message).toEqual('Password updated successfully');
+      expect(result.message).toEqual('Reset password successfully');
     });
   });
 });

@@ -44,13 +44,15 @@ By default, all endpoints inherit the global rate limit:
 
 To prevent brute-force attacks and email spamming, sensitive authentication endpoints enforce a stricter limit of **10 requests per 60 seconds**:
 
-| Endpoint                       | Method |  Rate Limit  | Purpose                             |
-| :----------------------------- | :----: | :----------: | :---------------------------------- |
-| `/api/v1/auth/login`           | `POST` | 10 req / 60s | Prevent password brute-forcing      |
-| `/api/v1/auth/register`        | `POST` | 10 req / 60s | Prevent account creation spam       |
-| `/api/v1/auth/verify-email`    | `POST` | 10 req / 60s | Prevent 6-digit OTP code guessing   |
-| `/api/v1/auth/forgot-password` | `POST` | 10 req / 60s | Prevent OTP email dispatch spam     |
-| `/api/v1/auth/reset-password`  | `POST` | 10 req / 60s | Prevent password reset OTP guessing |
+| Endpoint                          |  Method  |  Rate Limit  | Purpose                             |
+| :-------------------------------- | :------: | :----------: | :---------------------------------- |
+| `/api/v1/auth/login`              |  `POST`  | 10 req / 60s | Prevent password brute-forcing      |
+| `/api/v1/auth/register`           |  `POST`  | 10 req / 60s | Prevent account creation spam       |
+| `/api/v1/auth/verify-email`       |  `POST`  | 10 req / 60s | Prevent 6-digit OTP code guessing   |
+| `/api/v1/auth/forgot-password`    |  `POST`  | 10 req / 60s | Prevent OTP email dispatch spam     |
+| `/api/v1/auth/reset-password`     |  `POST`  | 10 req / 60s | Prevent password reset OTP guessing |
+| `/api/v1/account/change-password` |  `POST`  | 10 req / 60s | Prevent password guessing attacks   |
+| `/api/v1/account/delete`          | `DELETE` | 10 req / 60s | Prevent destructive deletion spam   |
 
 ---
 

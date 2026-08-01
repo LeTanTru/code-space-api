@@ -244,7 +244,8 @@ describe('AuthService', () => {
       expect(prismaService.emailVerification.create).toHaveBeenCalled();
       expect(mailService.sendVerificationEmail).toHaveBeenCalledWith(
         'developer@codespace.dev',
-        expect.stringMatching(/^\d{6}$/)
+        expect.stringMatching(/^\d{6}$/),
+        'Alex Dev'
       );
       expect(result).toEqual({
         id: '1',
@@ -281,7 +282,7 @@ describe('AuthService', () => {
       });
 
       expect(prismaService.$transaction).toHaveBeenCalled();
-      expect(result).toEqual({ message: 'Email verified successfully' });
+      expect(result).toEqual({ message: 'Verify email successfully' });
     });
 
     it('should throw UnauthorizedException for invalid code', async () => {
@@ -365,12 +366,14 @@ describe('AuthService', () => {
 
   describe('forgotPassword', () => {
     it('should store OTP hashed and send email when user exists', async () => {
-      jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue({ id: BigInt(1) } as any);
+      jest
+        .spyOn(prismaService.user, 'findUnique')
+        .mockResolvedValue({ id: BigInt(1), name: 'Alex Dev' } as any);
       const createSpy = jest.spyOn(prismaService.passwordResetToken, 'create');
 
       const result = await service.forgotPassword('developer@codespace.dev');
 
-      expect(result.message).toEqual('If this email is registered, a reset code has been sent.');
+      expect(result).toBeUndefined();
       expect(createSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
@@ -382,12 +385,12 @@ describe('AuthService', () => {
       expect(mailService.sendPasswordResetEmail).toHaveBeenCalled();
     });
 
-    it('should return 200-style response without sending email when user does not exist', async () => {
+    it('should throw NotFoundException when user email does not exist', async () => {
       jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue(null);
 
-      const result = await service.forgotPassword('ghost@codespace.dev');
-
-      expect(result.message).toEqual('If this email is registered, a reset code has been sent.');
+      await expect(service.forgotPassword('ghost@codespace.dev')).rejects.toThrow(
+        new NotFoundException('Email not registered')
+      );
       expect(mailService.sendPasswordResetEmail).not.toHaveBeenCalled();
     });
   });
@@ -411,7 +414,7 @@ describe('AuthService', () => {
         newPassword: 'NewPassword123!',
       });
 
-      expect(result.message).toEqual('Password updated successfully');
+      expect(result.message).toEqual('Reset password successfully');
       expect(prismaService.$transaction).toHaveBeenCalled();
     });
 

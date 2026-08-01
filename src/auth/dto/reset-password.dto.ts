@@ -6,8 +6,8 @@ export class ResetPasswordDto {
     example: 'developer@codespace.dev',
     description: 'Email address of the account being reset',
   })
-  @IsEmail({}, { message: 'Must be a valid email address' })
-  @IsNotEmpty({ message: 'Email is required' })
+  @IsEmail({}, { message: 'Please enter a valid email address' })
+  @IsNotEmpty({ message: 'Email address is required' })
   email: string;
 
   @ApiProperty({
@@ -15,19 +15,19 @@ export class ResetPasswordDto {
     description: '6-digit OTP code received via email',
   })
   @IsString()
-  @Length(6, 6, { message: 'Code must be exactly 6 digits' })
+  @Length(6, 6, { message: 'Verification code must be exactly 6 digits' })
   code: string;
 
   @ApiProperty({
     example: 'NewPassword123!',
     description:
-      'New account password (min 8 chars, must contain lowercase, uppercase, and a number)',
+      'New account password (min 6 chars, must contain at least one uppercase letter, one lowercase letter, and one number)',
   })
   @IsString()
-  @MinLength(8, { message: 'New password must be at least 8 characters long' })
+  @MinLength(6, { message: 'New password must be at least 6 characters long' })
   @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, {
     message:
-      'New password must contain at least one lowercase letter, one uppercase letter, and one number',
+      'New password must contain at least one uppercase letter, one lowercase letter, and one number',
   })
   newPassword: string;
 }

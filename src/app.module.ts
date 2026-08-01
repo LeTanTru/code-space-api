@@ -8,6 +8,7 @@ import { HealthModule } from '@/health/health.module';
 import { AuthModule } from '@/auth/auth.module';
 import { AccountModule } from '@/account/account.module';
 import { ResponseInterceptor } from '@/common/interceptors/response.interceptor';
+import { ONE_MINUTE_IN_MS } from '@/constants/time';
 
 @Module({
   imports: [
@@ -41,7 +42,7 @@ import { ResponseInterceptor } from '@/common/interceptors/response.interceptor'
       useFactory: (config: ConfigService) => [
         {
           name: 'default',
-          ttl: config.get<number>('THROTTLE_TTL', 60000),
+          ttl: config.get<number>('THROTTLE_TTL', ONE_MINUTE_IN_MS),
           limit: config.get<number>('THROTTLE_LIMIT', 60),
         },
       ],

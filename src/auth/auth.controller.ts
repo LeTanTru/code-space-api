@@ -15,6 +15,12 @@ import {
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Throttle } from '@nestjs/throttler';
 import { ResponseMessage } from '@/common/decorators/response-message.decorator';
+import {
+  ApiSingleResponse,
+  ApiNoDataResponse,
+  ApiMutateResponse,
+} from '@/common/decorators/swagger-response.decorator';
+import { AUTH_THROTTLE_LIMIT, AUTH_THROTTLE_TTL_MS } from '@/constants/time';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -33,25 +39,26 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 10, ttl: 60000 } })
-  @ResponseMessage('Logged in successfully')
+  @Throttle({ default: { limit: AUTH_THROTTLE_LIMIT, ttl: AUTH_THROTTLE_TTL_MS } })
+  @ResponseMessage('Login successfully')
   @ApiOperation({
     summary: 'User Login',
     description:
       'Authenticates user credentials, issues a short-lived JWT Access Token, creates a database session with device tracking, and sets an HTTP-only Refresh Token cookie.',
   })
   @ApiBody({ type: LoginDto })
+  @ApiSingleResponse(
+    LoginResponseDataDto,
+    HttpStatus.OK,
+    'Login successfully',
+    '/api/v1/auth/login'
+  )
   @ApiResponse({
-    status: 200,
-    description: 'User successfully authenticated.',
-    type: LoginResponseDataDto,
-  })
-  @ApiResponse({
-    status: 401,
+    status: HttpStatus.UNAUTHORIZED,
     description: 'Invalid credentials or user account no longer exists.',
   })
   @ApiResponse({
-    status: 400,
+    status: HttpStatus.BAD_REQUEST,
     description: 'Validation failed (e.g. invalid email format or missing password).',
   })
   async login(
@@ -64,27 +71,26 @@ export class AuthController {
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  @Throttle({ default: { limit: 10, ttl: 60000 } })
-  @ResponseMessage(
-    'Account created successfully. Please check your email for the verification code.'
-  )
+  @Throttle({ default: { limit: AUTH_THROTTLE_LIMIT, ttl: AUTH_THROTTLE_TTL_MS } })
+  @ResponseMessage('Register account successfully')
   @ApiOperation({
     summary: 'User Registration',
     description:
       'Creates a new unverified user account, generates a 6-digit OTP, and dispatches it via email. The account must be verified via POST /auth/verify-email before the user can fully log in.',
   })
   @ApiBody({ type: RegisterDto })
+  @ApiMutateResponse(
+    RegisterResponseDto,
+    HttpStatus.CREATED,
+    'Register account successfully',
+    '/api/v1/auth/register'
+  )
   @ApiResponse({
-    status: 201,
-    description: 'User account created; verification email dispatched.',
-    type: RegisterResponseDto,
-  })
-  @ApiResponse({
-    status: 409,
+    status: HttpStatus.CONFLICT,
     description: 'Email already registered.',
   })
   @ApiResponse({
-    status: 400,
+    status: HttpStatus.BAD_REQUEST,
     description: 'Validation failed (weak password or invalid payload).',
   })
   async register(@Body() dto: RegisterDto): Promise<RegisterResponseDto> {
@@ -93,20 +99,17 @@ export class AuthController {
 
   @Post('verify-email')
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 10, ttl: 60000 } })
-  @ResponseMessage('Email verified successfully')
+  @Throttle({ default: { limit: AUTH_THROTTLE_LIMIT, ttl: AUTH_THROTTLE_TTL_MS } })
+  @ResponseMessage('Verify email successfully')
   @ApiOperation({
     summary: 'Verify Email with OTP',
     description:
       'Validates the 6-digit OTP for a pending email verification and marks the user email verified. The user must then log in via POST /auth/login.',
   })
   @ApiBody({ type: VerifyEmailDto })
+  @ApiNoDataResponse(HttpStatus.OK, 'Verify email successfully', '/api/v1/auth/verify-email')
   @ApiResponse({
-    status: 200,
-    description: 'Email verified successfully.',
-  })
-  @ApiResponse({
-    status: 401,
+    status: HttpStatus.UNAUTHORIZED,
     description: 'Invalid, expired, or already used verification code.',
   })
   async verifyEmail(@Body() dto: VerifyEmailDto): Promise<{ message: string }> {
@@ -121,13 +124,14 @@ export class AuthController {
     description:
       'Rotates the refresh token presented in the HTTP-only cookie: revokes the old session, creates a new one, and returns a fresh Access Token.',
   })
+  @ApiSingleResponse(
+    RefreshResponseDto,
+    HttpStatus.OK,
+    'Access token refreshed successfully',
+    '/api/v1/auth/refresh'
+  )
   @ApiResponse({
-    status: 200,
-    description: 'Access token refreshed; new refresh cookie set.',
-    type: RefreshResponseDto,
-  })
-  @ApiResponse({
-    status: 401,
+    status: HttpStatus.UNAUTHORIZED,
     description: 'Refresh token missing, expired, or revoked.',
   })
   async refresh(
@@ -140,7 +144,7 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ResponseMessage('Logged out successfully')
+  @ResponseMessage('Logout successfully')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({
@@ -149,8 +153,8 @@ export class AuthController {
       'Revokes the current refresh session (scoped to the authenticated user) and clears the HTTP-only refresh token cookie.',
   })
   @ApiResponse({
-    status: 204,
-    description: 'Session revoked and cookie cleared.',
+    status: HttpStatus.NO_CONTENT,
+    description: 'Logout successfully',
   })
   async logout(@Req() req: any, @Res({ passthrough: true }) res: Response): Promise<void> {
     const refreshToken = (req.cookies as Record<string, string> | undefined)?.refreshToken;
@@ -159,25 +163,30 @@ export class AuthController {
 
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 10, ttl: 60000 } })
-  @ResponseMessage('If this email is registered, a reset code has been sent')
+  @Throttle({ default: { limit: AUTH_THROTTLE_LIMIT, ttl: AUTH_THROTTLE_TTL_MS } })
+  @ResponseMessage('Send password reset code successfully')
   @ApiOperation({
     summary: 'Request Password Reset Code',
     description:
-      'Dispatches a 6-digit password reset OTP via email. Always returns 200 regardless of whether the email exists to prevent user enumeration.',
+      'Dispatches a 6-digit password reset OTP via email if registered. Returns 404 if the email does not exist.',
   })
   @ApiBody({ type: ForgotPasswordDto })
+  @ApiNoDataResponse(
+    HttpStatus.OK,
+    'Send password reset code successfully',
+    '/api/v1/auth/forgot-password'
+  )
   @ApiResponse({
-    status: 200,
-    description: 'Reset code dispatched if the email is registered.',
+    status: HttpStatus.NOT_FOUND,
+    description: 'Email not registered.',
   })
-  async forgotPassword(@Body() dto: ForgotPasswordDto): Promise<{ message: string }> {
+  async forgotPassword(@Body() dto: ForgotPasswordDto): Promise<void> {
     return this.authService.forgotPassword(dto.email);
   }
 
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @Throttle({ default: { limit: AUTH_THROTTLE_LIMIT, ttl: AUTH_THROTTLE_TTL_MS } })
   @ResponseMessage('Password reset successfully')
   @ApiOperation({
     summary: 'Submit New Password',
@@ -185,12 +194,9 @@ export class AuthController {
       'Validates the reset OTP, updates the account password, and revokes ALL active sessions for security (forces re-login on every device).',
   })
   @ApiBody({ type: ResetPasswordDto })
+  @ApiNoDataResponse(HttpStatus.OK, 'Password reset successfully', '/api/v1/auth/reset-password')
   @ApiResponse({
-    status: 200,
-    description: 'Password updated successfully; all sessions revoked.',
-  })
-  @ApiResponse({
-    status: 401,
+    status: HttpStatus.UNAUTHORIZED,
     description: 'Invalid or expired reset code.',
   })
   async resetPassword(@Body() dto: ResetPasswordDto): Promise<{ message: string }> {
