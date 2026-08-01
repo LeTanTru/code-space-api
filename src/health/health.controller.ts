@@ -8,6 +8,7 @@ import {
 } from '@nestjs/terminus';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ApiSingleResponse } from '@/common/decorators/swagger-response.decorator';
+import { ResponseMessage } from '@/common/decorators/response-message.decorator';
 import { HealthCheckDataDto } from '@/health/dtos/health-response.dto';
 
 @ApiTags('Health')
@@ -21,6 +22,7 @@ export class HealthController {
 
   @Get()
   @HealthCheck()
+  @ResponseMessage('Check health successfully')
   @ApiOperation({ summary: 'Check API and Database health status' })
   @ApiSingleResponse(HealthCheckDataDto)
   async check(): Promise<HealthCheckResult> {

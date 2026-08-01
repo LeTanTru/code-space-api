@@ -6,7 +6,6 @@ import * as cookieParser from 'cookie-parser';
 
 import { AppModule } from '@/app.module';
 import { HttpExceptionFilter } from '@/common/filters/http-exception.filter';
-import { ResponseInterceptor } from '@/common/interceptors/response.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
@@ -40,9 +39,8 @@ async function bootstrap() {
     })
   );
 
-  // Global Exception & Response Interceptors
+  // Global Exception Filter
   app.useGlobalFilters(new HttpExceptionFilter());
-  app.useGlobalInterceptors(new ResponseInterceptor());
 
   // Swagger OpenAPI Documentation
   const config = new DocumentBuilder()
@@ -56,7 +54,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  const port = process.env.PORT || 4000;
+  const port = process.env.PORT || 8080;
   await app.listen(port);
 
   const logger = new NestLogger('Bootstrap');

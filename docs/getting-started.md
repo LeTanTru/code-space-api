@@ -27,7 +27,7 @@
 3. Update `.env` with your local database credentials:
 
    ```env
-   PORT=4000
+   PORT=8080
    NODE_ENV=development
    DATABASE_URL="mysql://root:rootpassword@localhost:3306/codespace_db?parseTime=true"
    JWT_ACCESS_SECRET="your-super-secret-access-key-32-chars-min"

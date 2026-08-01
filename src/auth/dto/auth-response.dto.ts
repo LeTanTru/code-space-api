@@ -62,3 +62,25 @@ export class LoginResponseDataDto {
   @ApiProperty({ type: () => UserResponseDto, description: 'User profile metadata' })
   user: UserResponseDto;
 }
+
+export class RegisterResponseDto extends UserResponseDto {
+  @ApiProperty({
+    example: '2026-08-01T11:45:00.000Z',
+    description: 'Account creation timestamp',
+  })
+  createdAt: Date;
+}
+
+export class RefreshResponseDto {
+  @ApiProperty({
+    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6...',
+    description: 'New JWT Access Token',
+  })
+  accessToken: string;
+
+  @ApiProperty({ example: 'Bearer', description: 'Token authorization type' })
+  tokenType: string;
+
+  @ApiProperty({ example: 900, description: 'Access token expiration in seconds' })
+  expiresIn: number;
+}

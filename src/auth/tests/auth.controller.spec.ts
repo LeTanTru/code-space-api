@@ -20,6 +20,19 @@ describe('AuthController', () => {
     },
   ];
 
+  const mockLoginResponse = {
+    accessToken: 'mocked-jwt-access-token',
+    tokenType: 'Bearer',
+    expiresIn: MOCK_EXPIRES_IN,
+    user: {
+      id: '1',
+      email: 'developer@codespace.dev',
+      name: 'Alex Dev',
+      avatarUrl: null,
+      role: UserRole.USER,
+    },
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
@@ -27,18 +40,29 @@ describe('AuthController', () => {
         {
           provide: AuthService,
           useValue: {
-            login: jest.fn().mockResolvedValue({
+            login: jest.fn().mockResolvedValue(mockLoginResponse),
+            register: jest.fn().mockResolvedValue({
+              id: '1',
+              email: 'developer@codespace.dev',
+              name: 'Alex Dev',
+              avatarUrl: null,
+              role: UserRole.USER,
+              createdAt: new Date('2026-08-01T11:45:00.000Z'),
+            }),
+            verifyEmail: jest.fn().mockResolvedValue({ message: 'Email verified successfully' }),
+            refresh: jest.fn().mockResolvedValue({
               accessToken: 'mocked-jwt-access-token',
               tokenType: 'Bearer',
               expiresIn: MOCK_EXPIRES_IN,
-              user: {
-                id: '1',
-                email: 'developer@codespace.dev',
-                name: 'Alex Dev',
-                avatarUrl: null,
-                role: UserRole.USER,
-              },
             }),
+            logout: jest.fn().mockResolvedValue(undefined),
+            forgotPassword: jest.fn().mockResolvedValue({
+              message: 'If this email is registered, a reset code has been sent.',
+            }),
+            resetPassword: jest.fn().mockResolvedValue({
+              message: 'Password updated successfully',
+            }),
+            revokeSession: jest.fn().mockResolvedValue(undefined),
             getMe: jest.fn().mockResolvedValue({
               id: '1',
               email: 'developer@codespace.dev',
@@ -80,38 +104,95 @@ describe('AuthController', () => {
         ipAddress: '127.0.0.1',
         userAgent: 'Mozilla/5.0',
       });
+      expect(result).toEqual(mockLoginResponse);
+    });
+  });
+
+  describe('register', () => {
+    it('should delegate register to AuthService', async () => {
+      const dto = {
+        email: 'developer@codespace.dev',
+        password: 'Password123!',
+        name: 'Alex Dev',
+      };
+
+      const result = await controller.register(dto);
+
+      expect(authService.register).toHaveBeenCalledWith(dto);
+      expect(result).toEqual(
+        expect.objectContaining({
+          id: '1',
+          email: 'developer@codespace.dev',
+          name: 'Alex Dev',
+        })
+      );
+    });
+  });
+
+  describe('verifyEmail', () => {
+    it('should delegate verify-email to AuthService and return success message', async () => {
+      const dto = { email: 'developer@codespace.dev', code: '123456' };
+
+      const result = await controller.verifyEmail(dto);
+
+      expect(authService.verifyEmail).toHaveBeenCalledWith(dto);
+      expect(result).toEqual({ message: 'Email verified successfully' });
+    });
+  });
+
+  describe('refresh', () => {
+    it('should pass the refresh cookie to AuthService', async () => {
+      const mockReq: any = { cookies: { refreshToken: 'some-refresh-token' } };
+      const mockRes: any = { cookie: jest.fn() };
+
+      const result = await controller.refresh(mockReq, mockRes);
+
+      expect(authService.refresh).toHaveBeenCalledWith('some-refresh-token', mockRes);
       expect(result).toEqual({
         accessToken: 'mocked-jwt-access-token',
         tokenType: 'Bearer',
         expiresIn: MOCK_EXPIRES_IN,
-        user: {
-          id: '1',
-          email: 'developer@codespace.dev',
-          name: 'Alex Dev',
-          avatarUrl: null,
-          role: UserRole.USER,
-        },
       });
     });
   });
 
-  describe('getMe', () => {
-    it('should return user profile and active device sessions', async () => {
-      const mockReq: any = { user: { id: '1' } };
-      const result = await controller.getMe(mockReq);
+  describe('logout', () => {
+    it('should revoke current session and clear cookie', async () => {
+      const mockReq: any = {
+        cookies: { refreshToken: 'some-refresh-token' },
+        user: { id: '1' },
+      };
+      const mockRes: any = { clearCookie: jest.fn() };
 
-      expect(authService.getMe).toHaveBeenCalledWith('1');
-      expect(result.activeSessions).toEqual(mockSessions);
+      await controller.logout(mockReq, mockRes);
+
+      expect(authService.logout).toHaveBeenCalledWith('some-refresh-token', '1', mockRes);
     });
   });
 
-  describe('getSessions', () => {
-    it('should return active logged in device sessions list', async () => {
-      const mockReq: any = { user: { id: '1' } };
-      const result = await controller.getSessions(mockReq);
+  describe('forgotPassword', () => {
+    it('should delegate forgot-password to AuthService', async () => {
+      const dto = { email: 'developer@codespace.dev' };
 
-      expect(authService.getActiveSessions).toHaveBeenCalledWith('1');
-      expect(result).toEqual(mockSessions);
+      const result = await controller.forgotPassword(dto);
+
+      expect(authService.forgotPassword).toHaveBeenCalledWith(dto.email);
+      expect(result.message).toEqual('If this email is registered, a reset code has been sent.');
+    });
+  });
+
+  describe('resetPassword', () => {
+    it('should delegate reset-password to AuthService', async () => {
+      const dto = {
+        email: 'developer@codespace.dev',
+        code: '123456',
+        newPassword: 'NewPassword123!',
+      };
+
+      const result = await controller.resetPassword(dto);
+
+      expect(authService.resetPassword).toHaveBeenCalledWith(dto);
+      expect(result.message).toEqual('Password updated successfully');
     });
   });
 });

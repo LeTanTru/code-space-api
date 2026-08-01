@@ -1,9 +1,13 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 import { PrismaModule } from '@/prisma/prisma.module';
 import { HealthModule } from '@/health/health.module';
 import { AuthModule } from '@/auth/auth.module';
+import { AccountModule } from '@/account/account.module';
+import { ResponseInterceptor } from '@/common/interceptors/response.interceptor';
 
 @Module({
   imports: [
@@ -30,10 +34,36 @@ import { AuthModule } from '@/auth/auth.module';
       },
     }),
 
+    // Global Rate Limiter Configuration
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => [
+        {
+          name: 'default',
+          ttl: config.get<number>('THROTTLE_TTL', 60000),
+          limit: config.get<number>('THROTTLE_LIMIT', 60),
+        },
+      ],
+    }),
+
     // Database & Feature Modules
     PrismaModule,
     HealthModule,
     AuthModule,
+    AccountModule,
+  ],
+  providers: [
+    // Global Response Interceptor (DI-aware, supports @ResponseMessage() decorator)
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: ResponseInterceptor,
+    },
+    // Global Throttler Rate Limiter Guard
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule {}
