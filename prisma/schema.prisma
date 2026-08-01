@@ -70,6 +70,7 @@ model RefreshToken {
   userId     BigInt    @map("user_id") @db.UnsignedBigInt
   tokenHash  String    @unique @map("token_hash") @db.VarChar(255)
   deviceName String?   @map("device_name") @db.VarChar(255)
+  userAgent  String?   @map("user_agent") @db.VarChar(255)
   ipAddress  String?   @map("ip_address") @db.VarChar(45)
   expiresAt  DateTime  @map("expires_at") @db.DateTime(3)
   revokedAt  DateTime? @map("revoked_at") @db.DateTime(3)
@@ -216,7 +217,7 @@ model PresetTerminal {
 model DirectoryHistory {
   id        BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
   userId    BigInt   @map("user_id") @db.UnsignedBigInt
-  path      String   @db.VarChar(1024)
+  path      String   @db.VarChar(512)
   position  Int      @default(0) @db.UnsignedSmallInt
   updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
 
