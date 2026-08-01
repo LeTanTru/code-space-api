@@ -31,6 +31,15 @@ export class SessionResponseDto {
   @ApiPropertyOptional({ example: '127.0.0.1', description: 'Client IP address' })
   ipAddress?: string | null;
 
+  @ApiPropertyOptional({
+    example: 'Ho Chi Minh City, Vietnam',
+    description: 'Geographical location derived from IP address',
+  })
+  location?: string | null;
+
+  @ApiPropertyOptional({ example: true, description: 'Whether this is the current active session' })
+  isCurrent?: boolean;
+
   @ApiProperty({ example: '2026-08-01T11:45:00.000Z', description: 'Session creation timestamp' })
   createdAt: Date;
 

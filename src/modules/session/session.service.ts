@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
+import * as crypto from 'crypto';
 import { PrismaService } from '@/modules/prisma/prisma.service';
 import { SessionResponseDto } from '@/modules/auth/dto/auth-response.dto';
 import { SessionNotFoundException } from '@/common/exceptions/app.exception';
+import { getLocationFromIp } from '@/common/utils/location.util';
 
 @Injectable()
 export class SessionService {
@@ -9,10 +11,17 @@ export class SessionService {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  private sha256(content: string): string {
+    return crypto.createHash('sha256').update(content).digest('hex');
+  }
+
   /**
    * Get active logged-in device sessions for user
    */
-  async getSessions(userIdStr: string): Promise<SessionResponseDto[]> {
+  async getSessions(
+    userIdStr: string,
+    currentRefreshToken?: string
+  ): Promise<SessionResponseDto[]> {
     const userId = BigInt(userIdStr);
     const sessions = await this.prisma.refreshToken.findMany({
       where: {
@@ -23,6 +32,7 @@ export class SessionService {
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
+        tokenHash: true,
         deviceName: true,
         userAgent: true,
         ipAddress: true,
@@ -31,11 +41,15 @@ export class SessionService {
       },
     });
 
-    return sessions.map((s) => ({
+    const currentHash = currentRefreshToken ? this.sha256(currentRefreshToken) : null;
+
+    return sessions.map((s, index) => ({
       id: s.id.toString(),
       deviceName: s.deviceName,
       userAgent: s.userAgent,
       ipAddress: s.ipAddress,
+      location: getLocationFromIp(s.ipAddress),
+      isCurrent: currentHash ? s.tokenHash === currentHash : sessions.length === 1 || index === 0,
       createdAt: s.createdAt,
       expiresAt: s.expiresAt,
     }));

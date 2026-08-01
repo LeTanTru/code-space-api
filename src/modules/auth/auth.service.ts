@@ -129,7 +129,7 @@ export class AuthService {
       httpOnly: true,
       secure: isProduction,
       sameSite: isProduction ? 'none' : 'lax',
-      path: '/api/v1/auth',
+      path: '/api/v1',
       maxAge: DEFAULT_REFRESH_TOKEN_EXPIRES_IN_DAYS * ONE_DAY_IN_MS,
     });
   }

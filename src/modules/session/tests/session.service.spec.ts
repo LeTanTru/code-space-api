@@ -53,6 +53,7 @@ describe('SessionService', () => {
         deviceName: 'Windows Workstation',
         userAgent: 'Mozilla/5.0 (Windows NT 10.0)',
         ipAddress: '127.0.0.1',
+        location: 'Local Network',
         createdAt: mockSessions[0].createdAt,
         expiresAt: mockSessions[0].expiresAt,
       });

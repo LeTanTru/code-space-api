@@ -1,4 +1,10 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  UnauthorizedException,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { ERROR_CODES, ErrorCode } from '@/constants/error-code';
 
 /**
@@ -16,60 +22,69 @@ export class AppException extends HttpException {
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
-export class InvalidCredentialsException extends AppException {
+export class InvalidCredentialsException extends UnauthorizedException {
+  readonly errorCode = ERROR_CODES.INVALID_CREDENTIALS;
   constructor(message = 'Invalid email or password') {
-    super(ERROR_CODES.INVALID_CREDENTIALS, message, HttpStatus.UNAUTHORIZED);
+    super({ message, code: ERROR_CODES.INVALID_CREDENTIALS });
   }
 }
 
-export class EmailNotVerifiedException extends AppException {
+export class EmailNotVerifiedException extends UnauthorizedException {
+  readonly errorCode = ERROR_CODES.EMAIL_NOT_VERIFIED;
   constructor(message = 'Email not verified. Please check your inbox for the verification code') {
-    super(ERROR_CODES.EMAIL_NOT_VERIFIED, message, HttpStatus.UNAUTHORIZED);
+    super({ message, code: ERROR_CODES.EMAIL_NOT_VERIFIED });
   }
 }
 
-export class InvalidVerificationCodeException extends AppException {
+export class InvalidVerificationCodeException extends UnauthorizedException {
+  readonly errorCode = ERROR_CODES.INVALID_VERIFICATION_CODE;
   constructor(message = 'Invalid or expired verification code') {
-    super(ERROR_CODES.INVALID_VERIFICATION_CODE, message, HttpStatus.UNAUTHORIZED);
+    super({ message, code: ERROR_CODES.INVALID_VERIFICATION_CODE });
   }
 }
 
-export class IncorrectPasswordException extends AppException {
+export class IncorrectPasswordException extends UnauthorizedException {
+  readonly errorCode = ERROR_CODES.INCORRECT_PASSWORD;
   constructor(message = 'Incorrect password') {
-    super(ERROR_CODES.INCORRECT_PASSWORD, message, HttpStatus.UNAUTHORIZED);
+    super({ message, code: ERROR_CODES.INCORRECT_PASSWORD });
   }
 }
 
-export class MissingRefreshTokenException extends AppException {
+export class MissingRefreshTokenException extends UnauthorizedException {
+  readonly errorCode = ERROR_CODES.MISSING_REFRESH_TOKEN;
   constructor(message = 'Refresh token not provided') {
-    super(ERROR_CODES.MISSING_REFRESH_TOKEN, message, HttpStatus.UNAUTHORIZED);
+    super({ message, code: ERROR_CODES.MISSING_REFRESH_TOKEN });
   }
 }
 
-export class InvalidSessionException extends AppException {
+export class InvalidSessionException extends UnauthorizedException {
+  readonly errorCode = ERROR_CODES.INVALID_SESSION;
   constructor(message = 'Session expired or invalid') {
-    super(ERROR_CODES.INVALID_SESSION, message, HttpStatus.UNAUTHORIZED);
+    super({ message, code: ERROR_CODES.INVALID_SESSION });
   }
 }
 
 // ─── User / Account ──────────────────────────────────────────────────────────
 
-export class UserNotFoundException extends AppException {
+export class UserNotFoundException extends UnauthorizedException {
+  readonly errorCode = ERROR_CODES.USER_NOT_FOUND;
   constructor(message = 'User not found') {
-    super(ERROR_CODES.USER_NOT_FOUND, message, HttpStatus.NOT_FOUND);
+    super({ message, code: ERROR_CODES.USER_NOT_FOUND });
   }
 }
 
-export class EmailAlreadyExistsException extends AppException {
+export class EmailAlreadyExistsException extends ConflictException {
+  readonly errorCode = ERROR_CODES.EMAIL_ALREADY_EXISTS;
   constructor(message = 'Email already registered') {
-    super(ERROR_CODES.EMAIL_ALREADY_EXISTS, message, HttpStatus.CONFLICT);
+    super({ message, code: ERROR_CODES.EMAIL_ALREADY_EXISTS });
   }
 }
 
 // ─── Session ─────────────────────────────────────────────────────────────────
 
-export class SessionNotFoundException extends AppException {
+export class SessionNotFoundException extends NotFoundException {
+  readonly errorCode = ERROR_CODES.SESSION_NOT_FOUND;
   constructor(message = 'Session not found') {
-    super(ERROR_CODES.SESSION_NOT_FOUND, message, HttpStatus.NOT_FOUND);
+    super({ message, code: ERROR_CODES.SESSION_NOT_FOUND });
   }
 }
