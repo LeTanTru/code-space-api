@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { PAGINATION_DEFAULTS } from '@/constants/pagination';
-import { RESPONSE_STATUS, RESPONSE_MESSAGES, API_META_DEFAULTS } from '@/constants/response';
+import { RESPONSE_STATUS, API_META_DEFAULTS } from '@/constants/response';
 
 export class ResponseMetaDto {
   @ApiProperty({ description: 'Response timestamp in milliseconds', example: 1785500000000 })
@@ -8,6 +8,9 @@ export class ResponseMetaDto {
 
   @ApiProperty({ description: 'API version identifier', example: API_META_DEFAULTS.VERSION })
   version: string;
+
+  @ApiPropertyOptional({ description: 'Request URL path', example: '/api/v1/auth/login' })
+  path?: string;
 }
 
 export class PaginationMetaDto extends ResponseMetaDto {
@@ -43,7 +46,7 @@ export class SingleResponseDto<T> {
 
   @ApiPropertyOptional({
     description: 'Optional human-readable response message',
-    example: RESPONSE_MESSAGES.SINGLE_FETCH_SUCCESS,
+    example: 'Resource retrieved successfully',
   })
   message?: string;
 
@@ -53,7 +56,7 @@ export class SingleResponseDto<T> {
   constructor(data: T, message?: string) {
     this.status = RESPONSE_STATUS.SUCCESS;
     this.data = data;
-    this.message = message || RESPONSE_MESSAGES.SINGLE_FETCH_SUCCESS;
+    this.message = message || 'Resource retrieved successfully';
     this.meta = {
       timestamp: Date.now(),
       version: API_META_DEFAULTS.VERSION,
@@ -74,7 +77,7 @@ export class ListResponseDto<T> {
 
   @ApiPropertyOptional({
     description: 'Optional human-readable response message',
-    example: RESPONSE_MESSAGES.LIST_FETCH_SUCCESS,
+    example: 'Resources retrieved successfully',
   })
   message?: string;
 
@@ -91,7 +94,7 @@ export class ListResponseDto<T> {
     const totalPages = Math.ceil(total / limit) || 1;
     this.status = RESPONSE_STATUS.SUCCESS;
     this.data = data;
-    this.message = message || RESPONSE_MESSAGES.LIST_FETCH_SUCCESS;
+    this.message = message || 'Resources retrieved successfully';
     this.meta = {
       total,
       page,
@@ -118,14 +121,14 @@ export class MutateResponseDto<T = any> {
 
   @ApiProperty({
     description: 'Mutation status message',
-    example: RESPONSE_MESSAGES.MUTATION_SUCCESS,
+    example: 'Operation completed successfully',
   })
   message: string;
 
   @ApiProperty({ type: () => ResponseMetaDto })
   meta: ResponseMetaDto;
 
-  constructor(message: string = RESPONSE_MESSAGES.MUTATION_SUCCESS, data?: T) {
+  constructor(message: string = 'Operation completed successfully', data?: T) {
     this.status = RESPONSE_STATUS.SUCCESS;
     this.data = data;
     this.message = message;
@@ -146,15 +149,49 @@ export class NoDataResponseDto {
 
   @ApiProperty({
     description: 'Action status message',
-    example: RESPONSE_MESSAGES.MUTATION_SUCCESS,
+    example: 'Operation completed successfully',
   })
   message: string;
 
   @ApiProperty({ type: () => ResponseMetaDto })
   meta: ResponseMetaDto;
 
-  constructor(message: string = RESPONSE_MESSAGES.MUTATION_SUCCESS) {
+  constructor(message: string = 'Operation completed successfully') {
     this.status = RESPONSE_STATUS.SUCCESS;
+    this.message = message;
+    this.meta = {
+      timestamp: Date.now(),
+      version: API_META_DEFAULTS.VERSION,
+    };
+  }
+}
+
+/**
+ * 5. Error Response DTO
+ * Used for error responses formatted by HttpExceptionFilter.
+ */
+export class ErrorResponseDto {
+  @ApiProperty({ description: 'Response status indicator', example: RESPONSE_STATUS.ERROR })
+  status: string;
+
+  @ApiProperty({
+    description: 'Domain-specific error code for desktop app error handling',
+    example: 'INVALID_CREDENTIALS',
+  })
+  code: string;
+
+  @ApiProperty({
+    description: 'Human-readable error description',
+    example: 'Invalid email or password',
+  })
+  message: string;
+
+  @ApiProperty({ type: () => ResponseMetaDto })
+  meta: ResponseMetaDto;
+
+  constructor(code: string, message: string) {
+    this.status = RESPONSE_STATUS.ERROR;
+    this.code = code;
     this.message = message;
     this.meta = {
       timestamp: Date.now(),

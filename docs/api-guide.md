@@ -8,64 +8,72 @@
 
 ---
 
-## Endpoint Contracts
+## Response Envelope Standards
 
-### Authentication (`/auth`)
+All HTTP responses returned by `code-space-api` follow standardized JSON structures for seamless desktop application integration.
 
-| Method | Endpoint         | Description                                                  | Auth Required       |
-| :----- | :--------------- | :----------------------------------------------------------- | :------------------ |
-| `POST` | `/auth/register` | Create user account                                          | ❌ No               |
-| `POST` | `/auth/login`    | Authenticate & issue Access Token + HTTP-only Refresh Cookie | ❌ No               |
-| `POST` | `/auth/refresh`  | Rotate Refresh Token and return fresh Access Token           | ❌ No (uses Cookie) |
-| `POST` | `/auth/logout`   | Revoke active Refresh Token session                          | ✅ Yes              |
-| `GET`  | `/auth/me`       | Fetch authenticated user profile                             | ✅ Yes              |
-
-#### Sample Login Payload (`POST /auth/login`)
+### Success Response Format
 
 ```json
 {
-  "email": "user@codespace.dev",
-  "password": "Password123!",
-  "deviceName": "Windows Workstation"
+  "status": "success",
+  "data": { ... },
+  "message": "Operation completed successfully",
+  "meta": {
+    "timestamp": 1785568167359,
+    "version": "v1"
+  }
+}
+```
+
+### Error Response Format
+
+Error responses omit `data: null` and return a domain-specific `code` string for application error handling:
+
+```json
+{
+  "status": "error",
+  "code": "INVALID_CREDENTIALS",
+  "message": "Invalid email or password",
+  "meta": {
+    "timestamp": 1785568167359,
+    "path": "/api/v1/auth/login"
+  }
 }
 ```
 
 ---
 
-### User Settings (`/settings`)
+## Application Error Codes (`ERROR_CODES`)
 
-| Method | Endpoint    | Description                  | Auth Required |
-| :----- | :---------- | :--------------------------- | :------------ |
-| `GET`  | `/settings` | Get user settings            | ✅ Yes        |
-| `PUT`  | `/settings` | Partial update user settings | ✅ Yes        |
+Below is the dictionary of standardized `code` values returned in error payloads (`src/constants/error-code.ts`):
 
-#### Sample Settings Update Payload (`PUT /settings`)
-
-```json
-{
-  "theme": "cyberpunk",
-  "terminalFontSize": 14,
-  "soundNotifications": true
-}
-```
-
----
-
-### Workspace Presets (`/presets`)
-
-| Method   | Endpoint       | Description            | Auth Required |
-| :------- | :------------- | :--------------------- | :------------ |
-| `GET`    | `/presets`     | List workspace presets | ✅ Yes        |
-| `POST`   | `/presets`     | Create preset          | ✅ Yes        |
-| `GET`    | `/presets/:id` | Fetch preset by ID     | ✅ Yes        |
-| `PUT`    | `/presets/:id` | Update preset by ID    | ✅ Yes        |
-| `DELETE` | `/presets/:id` | Delete preset by ID    | ✅ Yes        |
+| Error Code                  | HTTP Status | Description                                                                 |
+| :-------------------------- | :---------: | :-------------------------------------------------------------------------- |
+| `VALIDATION_ERROR`          |    `400`    | Request body validation failed (e.g. invalid email format, short password)  |
+| `BAD_REQUEST`               |    `400`    | Malformed request or illegal argument                                       |
+| `INVALID_CREDENTIALS`       |    `401`    | Authentication failed due to wrong email or password                        |
+| `INVALID_VERIFICATION_CODE` |    `401`    | Invalid, expired, or already used email OTP verification code               |
+| `INCORRECT_PASSWORD`        |    `401`    | Incorrect current password provided for password change or account deletion |
+| `MISSING_REFRESH_TOKEN`     |    `401`    | Refresh token HTTP-only cookie missing                                      |
+| `INVALID_SESSION`           |    `401`    | Refresh token expired, revoked, or session invalid                          |
+| `UNAUTHORIZED`              |    `401`    | Bearer access token missing or expired                                      |
+| `FORBIDDEN`                 |    `403`    | Access to target resource is forbidden                                      |
+| `NOT_FOUND`                 |    `404`    | Requested API resource path not found                                       |
+| `USER_NOT_FOUND`            |    `404`    | Target user account does not exist                                          |
+| `SESSION_NOT_FOUND`         |    `404`    | Target session ID not found or already deleted                              |
+| `EMAIL_ALREADY_EXISTS`      |    `409`    | Email address is already registered                                         |
+| `RESOURCE_CONFLICT`         |    `409`    | Conflict with existing resource state                                       |
+| `TOO_MANY_REQUESTS`         |    `429`    | Client exceeded rate limit threshold                                        |
+| `INTERNAL_SERVER_ERROR`     |    `500`    | Unexpected server exception                                                 |
 
 ---
 
-### Cloud Synchronization (`/sync`)
+## Endpoint Modules Overview
 
-| Method | Endpoint     | Description                                    | Auth Required |
-| :----- | :----------- | :--------------------------------------------- | :------------ |
-| `POST` | `/sync/push` | Push desktop `db.json` state to cloud database | ✅ Yes        |
-| `GET`  | `/sync/pull` | Pull full cloud state to desktop client        | ✅ Yes        |
+Detailed REST endpoint contracts are documented in module-specific guides:
+
+- **Authentication**: [`docs/auth-api.md`](auth-api.md) (`/auth/login`, `/auth/register`, `/auth/verify-email`, `/auth/refresh`, `/auth/logout`, `/auth/forgot-password`, `/auth/reset-password`)
+- **Account Management**: [`docs/account-api.md`](account-api.md) (`/account/profile`, `/account/change-password`, `/account/session`, `/account/delete`)
+- **Health Indicators**: [`docs/health-api.md`](health-api.md) (`/health`)
+- **Rate Limiting**: [`docs/rate-limiter.md`](rate-limiter.md) (Throttling limits & HTTP 429 specs)

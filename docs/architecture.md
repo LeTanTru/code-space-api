@@ -181,18 +181,26 @@ Passwords are encrypted using Argon2id with OWASP parameters:
 {
   "status": "success",
   "data": { ... },
-  "message": "Operation completed successfully"
+  "message": "Operation completed successfully",
+  "meta": {
+    "timestamp": 1785568167359,
+    "version": "v1"
+  }
 }
 ```
 
 ### Error Response (`HTTP 4xx / 5xx`)
 
+Error responses omit `data` and return a domain-specific error `code` (`src/constants/error-code.ts`) for desktop app handling:
+
 ```json
 {
   "status": "error",
-  "error": {
-    "code": "RESOURCE_NOT_FOUND",
-    "message": "Requested preset was not found"
+  "code": "INVALID_CREDENTIALS",
+  "message": "Invalid email or password",
+  "meta": {
+    "timestamp": 1785568167359,
+    "path": "/api/v1/auth/login"
   }
 }
 ```
