@@ -1,8 +1,9 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '@/modules/prisma/prisma.service';
+import { UserNotFoundException } from '@/common/exceptions/app.exception';
 
 export interface JwtPayload {
   sub: string;
@@ -39,7 +40,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     });
 
     if (!user) {
-      throw new UnauthorizedException('User account no longer exists');
+      throw new UserNotFoundException('User account no longer exists');
     }
 
     return {

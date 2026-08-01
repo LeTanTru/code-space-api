@@ -1,10 +1,14 @@
+import { Injectable, Logger } from '@nestjs/common';
 import {
-  ConflictException,
-  Injectable,
-  Logger,
-  NotFoundException,
-  UnauthorizedException,
-} from '@nestjs/common';
+  EmailAlreadyExistsException,
+  EmailNotVerifiedException,
+  InvalidCredentialsException,
+  InvalidSessionException,
+  InvalidVerificationCodeException,
+  MissingRefreshTokenException,
+  SessionNotFoundException,
+  UserNotFoundException,
+} from '@/common/exceptions/app.exception';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
@@ -176,12 +180,16 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid email or password');
+      throw new InvalidCredentialsException();
     }
 
     const isPasswordValid = await argon2.verify(user.passwordHash, pass);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid email or password');
+      throw new InvalidCredentialsException();
+    }
+
+    if (!user.emailVerifiedAt) {
+      throw new EmailNotVerifiedException();
     }
 
     return user;
@@ -208,7 +216,7 @@ export class AuthService {
     });
 
     if (existingUser) {
-      throw new ConflictException('Email already registered');
+      throw new EmailAlreadyExistsException();
     }
 
     const passwordHash = await argon2.hash(dto.password, ARGON2_OPTIONS);
@@ -261,7 +269,7 @@ export class AuthService {
     });
 
     if (!verification || !this.hashEquals(verification.codeHash, this.sha256(dto.code))) {
-      throw new UnauthorizedException('Invalid or expired verification code');
+      throw new InvalidVerificationCodeException();
     }
 
     await this.prisma.$transaction(async (tx) => {
@@ -284,7 +292,7 @@ export class AuthService {
    */
   async refresh(refreshToken: string | undefined, res?: Response): Promise<RefreshResponseDto> {
     if (!refreshToken) {
-      throw new UnauthorizedException('Refresh token not provided');
+      throw new MissingRefreshTokenException();
     }
 
     const tokenHash = this.sha256(refreshToken);
@@ -296,7 +304,7 @@ export class AuthService {
       });
 
       if (!session || session.revokedAt !== null || session.expiresAt <= now) {
-        throw new UnauthorizedException('Session expired or invalid');
+        throw new InvalidSessionException();
       }
 
       await tx.refreshToken.update({
@@ -328,7 +336,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('User account no longer exists');
+      throw new UserNotFoundException('User account no longer exists');
     }
 
     if (res) {
@@ -377,7 +385,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new NotFoundException('Email not registered');
+      throw new UserNotFoundException('Email not registered');
     }
 
     const code = this.generateOtp();
@@ -410,7 +418,7 @@ export class AuthService {
     });
 
     if (!token || !this.hashEquals(token.codeHash, this.sha256(dto.code))) {
-      throw new UnauthorizedException('Invalid or expired reset code');
+      throw new InvalidVerificationCodeException('Invalid or expired reset code');
     }
 
     const user = await this.prisma.user.findUnique({
@@ -419,7 +427,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid or expired reset code');
+      throw new InvalidVerificationCodeException('Invalid or expired reset code');
     }
 
     const newPasswordHash = await argon2.hash(dto.newPassword, ARGON2_OPTIONS);
@@ -462,7 +470,7 @@ export class AuthService {
     });
 
     if (result.count === 0) {
-      throw new NotFoundException('Session not found');
+      throw new SessionNotFoundException();
     }
 
     this.logger.log(`Session ${sessionIdStr} revoked for user ${userIdStr}`);
@@ -517,7 +525,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('User account no longer exists');
+      throw new UserNotFoundException('User account no longer exists');
     }
 
     const activeSessions = await this.getActiveSessions(userIdStr);
@@ -545,12 +553,12 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('User account not found');
+      throw new UserNotFoundException('User account not found');
     }
 
     const isPasswordValid = await argon2.verify(user.passwordHash, password, ARGON2_OPTIONS);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Incorrect password');
+      throw new InvalidCredentialsException('Incorrect password');
     }
 
     await this.prisma.user.delete({ where: { id: userId } });

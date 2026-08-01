@@ -1,10 +1,14 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { PrismaService } from '@/modules/prisma/prisma.service';
 import { SessionResponseDto, UserMeResponseDto } from '@/modules/auth/dto/auth-response.dto';
 import { UpdateProfileDto } from '@/modules/account/dto/update-profile.dto';
 import { ChangePasswordDto } from '@/modules/account/dto/change-password.dto';
 import { SessionService } from '@/modules/session/session.service';
+import {
+  IncorrectPasswordException,
+  UserNotFoundException,
+} from '@/common/exceptions/app.exception';
 
 const ARGON2_OPTIONS: argon2.Options & { raw?: boolean } = {
   type: argon2.argon2id,
@@ -39,7 +43,7 @@ export class AccountService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('User account no longer exists');
+      throw new UserNotFoundException('User account no longer exists');
     }
 
     const activeSessions = await this.sessionService.getSessions(userIdStr);
@@ -66,7 +70,7 @@ export class AccountService {
     });
 
     if (!userExists) {
-      throw new UnauthorizedException('User account no longer exists');
+      throw new UserNotFoundException('User account no longer exists');
     }
 
     const dataToUpdate: { name?: string; avatarUrl?: string | null } = {};
@@ -110,12 +114,12 @@ export class AccountService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('User account not found');
+      throw new UserNotFoundException('User account not found');
     }
 
     const isPasswordValid = await argon2.verify(user.passwordHash, password, ARGON2_OPTIONS);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Incorrect password');
+      throw new IncorrectPasswordException();
     }
 
     await this.prisma.user.delete({ where: { id: userId } });
@@ -134,7 +138,7 @@ export class AccountService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('User account no longer exists');
+      throw new UserNotFoundException('User account no longer exists');
     }
 
     const isOldPasswordValid = await argon2.verify(
@@ -143,7 +147,7 @@ export class AccountService {
       ARGON2_OPTIONS
     );
     if (!isOldPasswordValid) {
-      throw new UnauthorizedException('Incorrect current password');
+      throw new IncorrectPasswordException('Incorrect current password');
     }
 
     const newPasswordHash = await argon2.hash(dto.newPassword, ARGON2_OPTIONS);

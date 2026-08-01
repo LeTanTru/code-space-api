@@ -21,6 +21,19 @@ describe('AuthService', () => {
     name: 'Alex Dev',
     avatarUrl: null,
     role: UserRole.USER,
+    emailVerifiedAt: new Date('2026-01-01T00:00:00.000Z'),
+    createdAt: new Date('2026-08-01T11:45:00.000Z'),
+    updatedAt: new Date(),
+  };
+
+  const mockUnverifiedUser = {
+    id: BigInt(2),
+    email: 'unverified@codespace.dev',
+    passwordHash: '',
+    name: 'Unverified User',
+    avatarUrl: null,
+    role: UserRole.USER,
+    emailVerifiedAt: null,
     createdAt: new Date('2026-08-01T11:45:00.000Z'),
     updatedAt: new Date(),
   };
@@ -47,6 +60,7 @@ describe('AuthService', () => {
 
   beforeAll(async () => {
     mockUser.passwordHash = await argon2.hash('Password123!');
+    mockUnverifiedUser.passwordHash = await argon2.hash('Test1234!');
     mockVerification.codeHash = crypto.createHash('sha256').update('123456').digest('hex');
   });
 
@@ -153,12 +167,13 @@ describe('AuthService', () => {
   });
 
   describe('validateUser', () => {
-    it('should validate and return user for valid credentials', async () => {
+    it('should validate and return user for valid credentials with verified email', async () => {
       jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue(mockUser as any);
 
       const result = await service.validateUser('developer@codespace.dev', 'Password123!');
       expect(result).toBeDefined();
       expect(result.email).toEqual('developer@codespace.dev');
+      expect(result.emailVerifiedAt).not.toBeNull();
     });
 
     it('should throw UnauthorizedException for non-existent email', async () => {
@@ -175,6 +190,25 @@ describe('AuthService', () => {
       await expect(
         service.validateUser('developer@codespace.dev', 'WrongPassword!')
       ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should throw UnauthorizedException when email is not yet verified', async () => {
+      jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue(mockUnverifiedUser as any);
+
+      await expect(service.validateUser('unverified@codespace.dev', 'Test1234!')).rejects.toThrow(
+        new UnauthorizedException(
+          'Email not verified. Please check your inbox for the verification code'
+        )
+      );
+    });
+
+    it('should not reveal account existence when email is unverified (still checks password first)', async () => {
+      jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue(mockUnverifiedUser as any);
+
+      // Wrong password on unverified account → generic 401, not the unverified message
+      await expect(
+        service.validateUser('unverified@codespace.dev', 'WrongPassword!')
+      ).rejects.toThrow(new UnauthorizedException('Invalid email or password'));
     });
   });
 

@@ -1,6 +1,7 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/modules/prisma/prisma.service';
 import { SessionResponseDto } from '@/modules/auth/dto/auth-response.dto';
+import { SessionNotFoundException } from '@/common/exceptions/app.exception';
 
 @Injectable()
 export class SessionService {
@@ -57,7 +58,7 @@ export class SessionService {
     });
 
     if (result.count === 0) {
-      throw new NotFoundException('Session not found');
+      throw new SessionNotFoundException();
     }
 
     this.logger.log(`Session ${sessionIdStr} revoked for user ${userIdStr}`);
