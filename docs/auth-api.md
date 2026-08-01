@@ -6,16 +6,17 @@ This document provides detailed API specifications, response envelope structures
 
 ## Response Envelope Structure
 
-All successful responses are automatically formatted by the global `ResponseInterceptor` into the standardized envelope structure:
+All successful responses are automatically formatted by the global `ResponseInterceptor`:
 
 ```json
 {
   "status": "success",
   "data": { ... },
-  "message": "<custom_endpoint_message>",
+  "message": "<endpoint-specific-message>",
   "meta": {
     "timestamp": 1785564382331,
-    "version": "v1"
+    "version": "v1",
+    "path": "/api/v1/auth/<endpoint>"
   }
 }
 ```
@@ -24,21 +25,33 @@ All successful responses are automatically formatted by the global `ResponseInte
 
 ## Authentication Endpoints Overview
 
-| Endpoint                       | Method | Status |   Auth    | Success Message (`message`)                                                        | Implementation State |
-| :----------------------------- | :----: | :----: | :-------: | :--------------------------------------------------------------------------------- | :------------------: |
-| `/api/v1/auth/login`           | `POST` | `200`  |  ❌ None  | `Logged in successfully`                                                           |    ✅ Implemented    |
-| `/api/v1/auth/register`        | `POST` | `201`  |  ❌ None  | `Account created successfully. Please check your email for the verification code.` |    ✅ Implemented    |
-| `/api/v1/auth/verify-email`    | `POST` | `200`  |  ❌ None  | `Email verified successfully`                                                      |    ✅ Implemented    |
-| `/api/v1/auth/refresh`         | `POST` | `200`  | 🍪 Cookie | `Access token refreshed successfully`                                              |    ✅ Implemented    |
-| `/api/v1/auth/logout`          | `POST` | `204`  | 🔒 Bearer | `Logged out successfully`                                                          |    ✅ Implemented    |
-| `/api/v1/auth/forgot-password` | `POST` | `200`  |  ❌ None  | `If this email is registered, a reset code has been sent`                          |    ✅ Implemented    |
-| `/api/v1/auth/reset-password`  | `POST` | `200`  |  ❌ None  | `Password reset successfully`                                                      |    ✅ Implemented    |
+| Endpoint                       | Method | Status |   Auth    | Success Message (`message`)             |  Rate Limit  |
+| :----------------------------- | :----: | :----: | :-------: | :-------------------------------------- | :----------: |
+| `/api/v1/auth/login`           | `POST` | `200`  |  ❌ None  | `Login successfully`                    | 10 req / 60s |
+| `/api/v1/auth/register`        | `POST` | `201`  |  ❌ None  | `Register account successfully`         | 10 req / 60s |
+| `/api/v1/auth/verify-email`    | `POST` | `200`  |  ❌ None  | `Verify email successfully`             | 10 req / 60s |
+| `/api/v1/auth/refresh`         | `POST` | `200`  | 🍪 Cookie | `Refresh access token successfully`     |    Global    |
+| `/api/v1/auth/logout`          | `POST` | `204`  | 🔒 Bearer | `Logout successfully`                   |    Global    |
+| `/api/v1/auth/forgot-password` | `POST` | `200`  |  ❌ None  | `Send password reset code successfully` | 10 req / 60s |
+| `/api/v1/auth/reset-password`  | `POST` | `200`  |  ❌ None  | `Reset password successfully`           | 10 req / 60s |
 
 ---
 
 ## Response Data Examples by Endpoint
 
 ### `POST /api/v1/auth/login`
+
+**Request Body:**
+
+```json
+{
+  "email": "developer@codespace.dev",
+  "password": "Password123",
+  "deviceName": "Windows Workstation Desktop"
+}
+```
+
+**Response:**
 
 ```json
 {
@@ -55,41 +68,80 @@ All successful responses are automatically formatted by the global `ResponseInte
       "role": "USER"
     }
   },
-  "message": "Logged in successfully",
-  "meta": { "timestamp": 1785564382331, "version": "v1" }
+  "message": "Login successfully",
+  "meta": { "timestamp": 1785564382331, "version": "v1", "path": "/api/v1/auth/login" }
 }
 ```
 
+> A 7-day `refreshToken` HTTP-only cookie is also set on the response.
+
+---
+
 ### `POST /api/v1/auth/register`
+
+**Request Body:**
+
+```json
+{
+  "name": "Alex Dev",
+  "email": "developer@codespace.dev",
+  "password": "Password123"
+}
+```
+
+**Password Requirements**: min 6 chars, at least 1 uppercase, 1 lowercase, 1 digit.
+
+**Response (`201 Created`):**
 
 ```json
 {
   "status": "success",
   "data": {
     "id": "2",
-    "email": "newuser@codespace.dev",
-    "name": "New Developer",
+    "email": "developer@codespace.dev",
+    "name": "Alex Dev",
     "avatarUrl": null,
     "role": "USER",
     "createdAt": "2026-08-01T13:00:00.000Z"
   },
-  "message": "Account created successfully. Please check your email for the verification code.",
-  "meta": { "timestamp": 1785564382331, "version": "v1" }
+  "message": "Register account successfully",
+  "meta": { "timestamp": 1785564382331, "version": "v1", "path": "/api/v1/auth/register" }
 }
 ```
 
+> A verification OTP email is dispatched asynchronously in the background. The HTTP response returns immediately without waiting.
+
+---
+
 ### `POST /api/v1/auth/verify-email`
+
+**Request Body:**
+
+```json
+{
+  "email": "developer@codespace.dev",
+  "code": "123456"
+}
+```
+
+**Response:**
 
 ```json
 {
   "status": "success",
-  "data": { "message": "Email verified successfully" },
-  "message": "Email verified successfully",
-  "meta": { "timestamp": 1785564382331, "version": "v1" }
+  "data": null,
+  "message": "Verify email successfully",
+  "meta": { "timestamp": 1785564382331, "version": "v1", "path": "/api/v1/auth/verify-email" }
 }
 ```
 
+---
+
 ### `POST /api/v1/auth/refresh`
+
+Requires the `refreshToken` HTTP-only cookie set during login.
+
+**Response:**
 
 ```json
 {
@@ -99,30 +151,70 @@ All successful responses are automatically formatted by the global `ResponseInte
     "tokenType": "Bearer",
     "expiresIn": 900
   },
-  "message": "Access token refreshed successfully",
-  "meta": { "timestamp": 1785564382331, "version": "v1" }
+  "message": "Refresh access token successfully",
+  "meta": { "timestamp": 1785564382331, "version": "v1", "path": "/api/v1/auth/refresh" }
 }
 ```
+
+> The old refresh token is revoked and a new one is issued (token rotation).
+
+---
+
+### `POST /api/v1/auth/logout`
+
+Requires `Authorization: Bearer <accessToken>`.
+
+**Response (`204 No Content`):** Empty body.
+
+---
 
 ### `POST /api/v1/auth/forgot-password`
 
+**Request Body:**
+
 ```json
 {
-  "status": "success",
-  "data": { "message": "If this email is registered, a reset code has been sent." },
-  "message": "If this email is registered, a reset code has been sent",
-  "meta": { "timestamp": 1785564382331, "version": "v1" }
+  "email": "developer@codespace.dev"
 }
 ```
 
-### `POST /api/v1/auth/reset-password`
+**Response:**
 
 ```json
 {
   "status": "success",
-  "data": { "message": "Password updated successfully" },
-  "message": "Password reset successfully",
-  "meta": { "timestamp": 1785564382331, "version": "v1" }
+  "data": null,
+  "message": "Send password reset code successfully",
+  "meta": { "timestamp": 1785564382331, "version": "v1", "path": "/api/v1/auth/forgot-password" }
+}
+```
+
+> Returns `404 Not Found` if the email is not registered. OTP email is dispatched asynchronously.
+
+---
+
+### `POST /api/v1/auth/reset-password`
+
+**Request Body:**
+
+```json
+{
+  "email": "developer@codespace.dev",
+  "code": "654321",
+  "newPassword": "NewPassword123"
+}
+```
+
+**Password Requirements**: min 6 chars, at least 1 uppercase, 1 lowercase, 1 digit.
+
+**Response:**
+
+```json
+{
+  "status": "success",
+  "data": null,
+  "message": "Reset password successfully",
+  "meta": { "timestamp": 1785564382331, "version": "v1", "path": "/api/v1/auth/reset-password" }
 }
 ```
 
@@ -130,7 +222,7 @@ All successful responses are automatically formatted by the global `ResponseInte
 
 ## Error Messages & Scenarios
 
-When an error occurs, the global `HttpExceptionFilter` formats errors into:
+When an error occurs, the global `HttpExceptionFilter` formats it as:
 
 ```json
 {
@@ -144,12 +236,13 @@ When an error occurs, the global `HttpExceptionFilter` formats errors into:
 }
 ```
 
-| Scenario                     | Triggering Endpoint         | HTTP Code | Error Code (`code`)         | Error Message (`message`)                             |
-| :--------------------------- | :-------------------------- | :-------: | :-------------------------- | :---------------------------------------------------- |
-| Invalid Email/Password       | `POST /auth/login`          |   `401`   | `INVALID_CREDENTIALS`       | `Invalid email or password`                           |
-| Duplicate Email              | `POST /auth/register`       |   `409`   | `EMAIL_ALREADY_EXISTS`      | `Email already registered`                            |
-| Invalid OTP Code             | `POST /auth/verify-email`   |   `401`   | `INVALID_VERIFICATION_CODE` | `Invalid, expired, or already used verification code` |
-| Missing Refresh Cookie       | `POST /auth/refresh`        |   `401`   | `MISSING_REFRESH_TOKEN`     | `Refresh token not provided`                          |
-| Session Expired / Revoked    | `POST /auth/refresh`        |   `401`   | `INVALID_SESSION`           | `Session expired or invalid`                          |
-| Invalid / Expired Reset Code | `POST /auth/reset-password` |   `401`   | `INVALID_VERIFICATION_CODE` | `Invalid or expired reset code`                       |
-| Invalid Bearer Token         | `POST /auth/logout`         |   `401`   | `UNAUTHORIZED`              | `Unauthorized`                                        |
+| Scenario                     | Triggering Endpoint          | HTTP Code | Error Code (`code`)         | Error Message (`message`)                             |
+| :--------------------------- | :--------------------------- | :-------: | :-------------------------- | :---------------------------------------------------- |
+| Invalid Email/Password       | `POST /auth/login`           |   `401`   | `INVALID_CREDENTIALS`       | `Invalid email or password`                           |
+| Duplicate Email              | `POST /auth/register`        |   `409`   | `EMAIL_ALREADY_EXISTS`      | `Email already registered`                            |
+| Invalid OTP Code             | `POST /auth/verify-email`    |   `401`   | `INVALID_VERIFICATION_CODE` | `Invalid, expired, or already used verification code` |
+| Missing Refresh Cookie       | `POST /auth/refresh`         |   `401`   | `MISSING_REFRESH_TOKEN`     | `Refresh token not provided`                          |
+| Session Expired / Revoked    | `POST /auth/refresh`         |   `401`   | `INVALID_SESSION`           | `Session expired or invalid`                          |
+| Email Not Registered         | `POST /auth/forgot-password` |   `404`   | `NOT_FOUND`                 | `Email not registered`                                |
+| Invalid / Expired Reset Code | `POST /auth/reset-password`  |   `401`   | `INVALID_VERIFICATION_CODE` | `Invalid or expired reset code`                       |
+| Invalid Bearer Token         | `POST /auth/logout`          |   `401`   | `UNAUTHORIZED`              | `Unauthorized`                                        |

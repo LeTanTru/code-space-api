@@ -3,10 +3,11 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
-import { PrismaModule } from '@/prisma/prisma.module';
-import { HealthModule } from '@/health/health.module';
-import { AuthModule } from '@/auth/auth.module';
-import { AccountModule } from '@/account/account.module';
+import { PrismaModule } from '@/modules/prisma/prisma.module';
+import { HealthModule } from '@/modules/health/health.module';
+import { AuthModule } from '@/modules/auth/auth.module';
+import { AccountModule } from '@/modules/account/account.module';
+import { SessionModule } from '@/modules/session/session.module';
 import { ResponseInterceptor } from '@/common/interceptors/response.interceptor';
 import { ONE_MINUTE_IN_MS } from '@/constants/time';
 
@@ -53,6 +54,7 @@ import { ONE_MINUTE_IN_MS } from '@/constants/time';
     HealthModule,
     AuthModule,
     AccountModule,
+    SessionModule,
   ],
   providers: [
     // Global Response Interceptor (DI-aware, supports @ResponseMessage() decorator)

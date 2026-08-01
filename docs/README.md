@@ -4,32 +4,35 @@ This folder documents the core architecture, database models, API contracts, and
 
 ## Guides
 
+- [project-overview.md](project-overview.md)  
+  Contributor-oriented summary of the API purpose, tech stack, source map (including `src/modules/` structure), workflows, and constraints.
+
+- [architecture.md](architecture.md)  
+  Layered architecture, module dependency graph, class diagram, security design (Argon2id + Dual JWT), email CID logo pattern, and error handling pipeline.
+
+- [getting-started.md](getting-started.md)  
+  Local setup, environment variables, Prisma database migrations, seeding, Docker workflows, and npm command reference.
+
 - [auth-api.md](auth-api.md)  
-  Authentication specifications: `login`, `register`, `verify-email`, `refresh`, `logout`, `forgot-password`, `reset-password`.
+  Authentication specifications: `login`, `register`, `verify-email`, `refresh`, `logout`, `forgot-password`, `reset-password` — including request bodies, responses, and error codes.
 
 - [account-api.md](account-api.md)  
-  Authenticated user account management: `GET profile`, `PUT profile`, `POST change-password`, `GET session`, `DELETE session/delete/:id`, `DELETE delete`.
+  Authenticated user account management: `GET profile`, `PUT update/profile`, `POST change-password`, `DELETE delete`.
+
+- [session-api.md](session-api.md)  
+  Device session listing & revocation: `GET session/list`, `DELETE session/delete/:id` — including IDOR protection details and DTO field reference.
 
 - [health-api.md](health-api.md)  
-  System health monitoring & MySQL database connection indicator (`GET health`).
+  System health monitoring & MySQL database connection indicator (`GET /health`).
+
+- [api-guide.md](api-guide.md)  
+  Response envelope standards, error code dictionary, and links to all module-specific API docs.
 
 - [rate-limiter.md](rate-limiter.md)  
   Rate limiting & throttling specifications (`@nestjs/throttler`), sensitive route overrides, and HTTP 429 response structure.
 
-- [project-overview.md](project-overview.md)  
-  Contributor-oriented summary of the API purpose, tech stack, source map, workflows, and constraints.
-
-- [getting-started.md](getting-started.md)  
-  Local setup, environment variables, Prisma database migrations, seeding, and Docker workflows.
-
-- [architecture.md](architecture.md)  
-  Layered architecture, security design (Argon2id + Dual JWT Tokens), request lifecycle, and error handling pipeline.
-
 - [db.md](db.md)  
   Complete `schema.prisma` specification for MySQL 8.0, entity relationship diagrams, indexes, and relational mappings.
-
-- [api-guide.md](api-guide.md)  
-  RESTful HTTP endpoint contracts, request/response JSON bodies, query params, and status codes.
 
 - [sync-guide.md](sync-guide.md)  
   Offline-first cloud synchronization protocol connecting `code-space-desktop` (`db.json`) and `code-space-api` (MySQL), featuring Last-Write-Wins conflict resolution.
