@@ -138,7 +138,7 @@ All successful responses are automatically formatted by the global `ResponseInte
 }
 ```
 
-**Response (`204 No Content`):** Empty body. All user data is permanently deleted.
+**Response (`204 No Content`):** Empty body. All user data is permanently deleted, active sessions are cascade-revoked, and the `refreshToken` HTTP-only cookie is cleared on the client.
 
 ---
 

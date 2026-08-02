@@ -2,6 +2,7 @@ import { Controller, Post, Body, Req, Res, HttpCode, HttpStatus, UseGuards } fro
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { AuthService } from '@/modules/auth/auth.service';
+import { extractClientInfo } from '@/utils/request.util';
 import { LoginDto } from '@/modules/auth/dto/login.dto';
 import { RegisterDto } from '@/modules/auth/dto/register.dto';
 import { VerifyEmailDto } from '@/modules/auth/dto/verify-email.dto';
@@ -26,16 +27,6 @@ import { AUTH_THROTTLE_LIMIT, AUTH_THROTTLE_TTL_MS } from '@/constants/time';
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
-
-  private extractClientInfo(req: Request): { ipAddress: string; userAgent: string } {
-    const forwarded = req.headers['x-forwarded-for'];
-    const ipAddress =
-      typeof forwarded === 'string'
-        ? forwarded.split(',')[0].trim()
-        : req.ip || req.socket?.remoteAddress || 'Unknown IP';
-    const userAgent = req.headers['user-agent'] || 'Unknown Device';
-    return { ipAddress, userAgent };
-  }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -66,7 +57,7 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response
   ): Promise<LoginResponseDataDto> {
-    return this.authService.login(dto, res, this.extractClientInfo(req));
+    return this.authService.login(dto, res, extractClientInfo(req));
   }
 
   @Post('register')

@@ -12,7 +12,7 @@ describe('AccountService', () => {
   let sessionService: SessionService;
 
   const mockUser = {
-    id: BigInt(1),
+    id: '1',
     email: 'developer@codespace.dev',
     passwordHash: '$argon2id$v=19$m=65536,t=3,p=4$mockHash',
     name: 'Alex Dev',
@@ -101,7 +101,7 @@ describe('AccountService', () => {
       const result = await service.updateProfile('1', { name: 'New Name' });
 
       expect(prismaService.user.update).toHaveBeenCalledWith({
-        where: { id: BigInt(1) },
+        where: { id: '1' },
         data: { name: 'New Name' },
       });
       expect(result).toBeDefined();
@@ -150,7 +150,7 @@ describe('AccountService', () => {
       jest.spyOn(prismaService.user, 'delete').mockResolvedValue(mockUser as any);
 
       await expect(service.deleteAccount('1', 'Password123!')).resolves.not.toThrow();
-      expect(prismaService.user.delete).toHaveBeenCalledWith({ where: { id: BigInt(1) } });
+      expect(prismaService.user.delete).toHaveBeenCalledWith({ where: { id: '1' } });
     });
 
     it('should throw UnauthorizedException when password is incorrect', async () => {
@@ -178,11 +178,11 @@ describe('AccountService', () => {
 
       expect(result).toEqual({ message: 'Change password successfully' });
       expect(prismaService.user.update).toHaveBeenCalledWith({
-        where: { id: BigInt(1) },
+        where: { id: '1' },
         data: { passwordHash: 'newHashedPassword' },
       });
       expect(prismaService.refreshToken.updateMany).toHaveBeenCalledWith({
-        where: { userId: BigInt(1), revokedAt: null },
+        where: { userId: '1', revokedAt: null },
         data: { revokedAt: expect.any(Date) },
       });
     });

@@ -3,7 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '@/modules/prisma/prisma.service';
-import { UserNotFoundException } from '@/common/exceptions/app.exception';
+import { UnauthorizedException } from '@/common/exceptions/app.exception';
+import { ERROR_CODES } from '@/constants/error-code';
 
 export interface JwtPayload {
   sub: string;
@@ -27,7 +28,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   }
 
   async validate(payload: JwtPayload) {
-    const userId = BigInt(payload.sub);
+    const userId = payload.sub;
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -40,12 +41,9 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     });
 
     if (!user) {
-      throw new UserNotFoundException('User account no longer exists');
+      throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND, 'User account no longer exists');
     }
 
-    return {
-      ...user,
-      id: user.id.toString(),
-    };
+    return user;
   }
 }

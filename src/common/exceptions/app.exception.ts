@@ -1,15 +1,17 @@
 import {
   HttpException,
   HttpStatus,
-  UnauthorizedException,
-  NotFoundException,
-  ConflictException,
+  UnauthorizedException as NestUnauthorizedException,
+  NotFoundException as NestNotFoundException,
+  ConflictException as NestConflictException,
+  BadRequestException as NestBadRequestException,
+  ForbiddenException as NestForbiddenException,
 } from '@nestjs/common';
 import { ERROR_CODES, ErrorCode } from '@/constants/error-code';
 
 /**
  * Base application exception that carries a typed error code.
- * Use the domain-specific subclasses below instead of throwing raw NestJS exceptions.
+ * Use base HTTP status exceptions below directly in services with ERROR_CODES.
  */
 export class AppException extends HttpException {
   readonly errorCode: ErrorCode;
@@ -20,71 +22,49 @@ export class AppException extends HttpException {
   }
 }
 
-// ─── Auth ────────────────────────────────────────────────────────────────────
+// ─── Base HTTP Status Subclasses ──────────────────────────────────────────────
 
-export class InvalidCredentialsException extends UnauthorizedException {
-  readonly errorCode = ERROR_CODES.INVALID_CREDENTIALS;
-  constructor(message = 'Invalid email or password') {
-    super({ message, code: ERROR_CODES.INVALID_CREDENTIALS });
+export class UnauthorizedException extends NestUnauthorizedException {
+  readonly errorCode: ErrorCode;
+
+  constructor(errorCode: ErrorCode, message: string) {
+    super({ message, code: errorCode });
+    this.errorCode = errorCode;
   }
 }
 
-export class EmailNotVerifiedException extends UnauthorizedException {
-  readonly errorCode = ERROR_CODES.EMAIL_NOT_VERIFIED;
-  constructor(message = 'Email not verified. Please check your inbox for the verification code') {
-    super({ message, code: ERROR_CODES.EMAIL_NOT_VERIFIED });
+export class NotFoundException extends NestNotFoundException {
+  readonly errorCode: ErrorCode;
+
+  constructor(errorCode: ErrorCode, message: string) {
+    super({ message, code: errorCode });
+    this.errorCode = errorCode;
   }
 }
 
-export class InvalidVerificationCodeException extends UnauthorizedException {
-  readonly errorCode = ERROR_CODES.INVALID_VERIFICATION_CODE;
-  constructor(message = 'Invalid or expired verification code') {
-    super({ message, code: ERROR_CODES.INVALID_VERIFICATION_CODE });
+export class ConflictException extends NestConflictException {
+  readonly errorCode: ErrorCode;
+
+  constructor(errorCode: ErrorCode, message: string) {
+    super({ message, code: errorCode });
+    this.errorCode = errorCode;
   }
 }
 
-export class IncorrectPasswordException extends UnauthorizedException {
-  readonly errorCode = ERROR_CODES.INCORRECT_PASSWORD;
-  constructor(message = 'Incorrect password') {
-    super({ message, code: ERROR_CODES.INCORRECT_PASSWORD });
+export class BadRequestException extends NestBadRequestException {
+  readonly errorCode: ErrorCode;
+
+  constructor(errorCode: ErrorCode, message: string) {
+    super({ message, code: errorCode });
+    this.errorCode = errorCode;
   }
 }
 
-export class MissingRefreshTokenException extends UnauthorizedException {
-  readonly errorCode = ERROR_CODES.MISSING_REFRESH_TOKEN;
-  constructor(message = 'Refresh token not provided') {
-    super({ message, code: ERROR_CODES.MISSING_REFRESH_TOKEN });
-  }
-}
+export class ForbiddenException extends NestForbiddenException {
+  readonly errorCode: ErrorCode;
 
-export class InvalidSessionException extends UnauthorizedException {
-  readonly errorCode = ERROR_CODES.INVALID_SESSION;
-  constructor(message = 'Session expired or invalid') {
-    super({ message, code: ERROR_CODES.INVALID_SESSION });
-  }
-}
-
-// ─── User / Account ──────────────────────────────────────────────────────────
-
-export class UserNotFoundException extends UnauthorizedException {
-  readonly errorCode = ERROR_CODES.USER_NOT_FOUND;
-  constructor(message = 'User not found') {
-    super({ message, code: ERROR_CODES.USER_NOT_FOUND });
-  }
-}
-
-export class EmailAlreadyExistsException extends ConflictException {
-  readonly errorCode = ERROR_CODES.EMAIL_ALREADY_EXISTS;
-  constructor(message = 'Email already registered') {
-    super({ message, code: ERROR_CODES.EMAIL_ALREADY_EXISTS });
-  }
-}
-
-// ─── Session ─────────────────────────────────────────────────────────────────
-
-export class SessionNotFoundException extends NotFoundException {
-  readonly errorCode = ERROR_CODES.SESSION_NOT_FOUND;
-  constructor(message = 'Session not found') {
-    super({ message, code: ERROR_CODES.SESSION_NOT_FOUND });
+  constructor(errorCode: ErrorCode, message: string) {
+    super({ message, code: errorCode });
+    this.errorCode = errorCode;
   }
 }

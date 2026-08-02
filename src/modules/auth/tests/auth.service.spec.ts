@@ -15,7 +15,7 @@ describe('AuthService', () => {
   let mailService: MailService;
 
   const mockUser = {
-    id: BigInt(1),
+    id: '1',
     email: 'developer@codespace.dev',
     passwordHash: '',
     name: 'Alex Dev',
@@ -27,7 +27,7 @@ describe('AuthService', () => {
   };
 
   const mockUnverifiedUser = {
-    id: BigInt(2),
+    id: '2',
     email: 'unverified@codespace.dev',
     passwordHash: '',
     name: 'Unverified User',
@@ -40,7 +40,7 @@ describe('AuthService', () => {
 
   const mockSessions = [
     {
-      id: BigInt(10),
+      id: '10',
       deviceName: 'Windows Desktop',
       userAgent: 'Mozilla/5.0',
       ipAddress: '127.0.0.1',
@@ -77,19 +77,20 @@ describe('AuthService', () => {
               update: jest.fn(),
             },
             refreshToken: {
-              create: jest.fn().mockResolvedValue({ id: BigInt(1) }),
+              create: jest.fn().mockResolvedValue({ id: '1' }),
               findMany: jest.fn().mockResolvedValue(mockSessions),
               findUnique: jest.fn(),
               update: jest.fn(),
               updateMany: jest.fn().mockResolvedValue({ count: 1 }),
             },
             emailVerification: {
-              create: jest.fn().mockResolvedValue({ id: BigInt(1) }),
+              create: jest.fn().mockResolvedValue({ id: '1' }),
               findFirst: jest.fn(),
               update: jest.fn(),
             },
             passwordResetToken: {
-              create: jest.fn().mockResolvedValue({ id: BigInt(1) }),
+              create: jest.fn().mockResolvedValue({ id: '1' }),
+              deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
               findFirst: jest.fn(),
               update: jest.fn(),
             },
@@ -109,8 +110,8 @@ describe('AuthService', () => {
                     update: jest.fn().mockResolvedValue({}),
                     updateMany: jest.fn().mockResolvedValue({ count: 3 }),
                     findUnique: jest.fn().mockResolvedValue({
-                      id: BigInt(1),
-                      userId: BigInt(1),
+                      id: '1',
+                      userId: '1',
                       tokenHash: 'hash',
                       deviceName: 'Windows Desktop',
                       userAgent: 'Mozilla/5.0',
@@ -118,7 +119,7 @@ describe('AuthService', () => {
                       expiresAt: new Date(Date.now() + 86400000),
                       revokedAt: null,
                     }),
-                    create: jest.fn().mockResolvedValue({ id: BigInt(2) }),
+                    create: jest.fn().mockResolvedValue({ id: '2' }),
                   },
                 });
               }
@@ -244,7 +245,7 @@ describe('AuthService', () => {
         expect.any(String),
         expect.objectContaining({
           httpOnly: true,
-          path: '/api/v1/auth',
+          path: '/api/v1',
         })
       );
     });
@@ -352,7 +353,7 @@ describe('AuthService', () => {
       expect(mockResponse.cookie).toHaveBeenCalledWith(
         'refreshToken',
         expect.any(String),
-        expect.objectContaining({ httpOnly: true, path: '/api/v1/auth' })
+        expect.objectContaining({ httpOnly: true, path: '/api/v1' })
       );
     });
 
@@ -388,12 +389,15 @@ describe('AuthService', () => {
 
       expect(updateManySpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ userId: BigInt(1), revokedAt: null }),
+          where: expect.objectContaining({ userId: '1', revokedAt: null }),
           data: { revokedAt: expect.any(Date) },
         })
       );
       expect(mockResponse.clearCookie).toHaveBeenCalledWith('refreshToken', {
-        path: '/api/v1/auth',
+        httpOnly: true,
+        secure: false,
+        sameSite: 'lax',
+        path: '/api/v1',
       });
     });
   });
@@ -402,7 +406,7 @@ describe('AuthService', () => {
     it('should store OTP hashed and send email when user exists', async () => {
       jest
         .spyOn(prismaService.user, 'findUnique')
-        .mockResolvedValue({ id: BigInt(1), name: 'Alex Dev' } as any);
+        .mockResolvedValue({ id: '1', name: 'Alex Dev' } as any);
       const createSpy = jest.spyOn(prismaService.passwordResetToken, 'create');
 
       const result = await service.forgotPassword('developer@codespace.dev');
@@ -432,7 +436,7 @@ describe('AuthService', () => {
   describe('resetPassword', () => {
     it('should update password and revoke all sessions on valid code', async () => {
       const token = {
-        id: BigInt(1),
+        id: '1',
         email: 'developer@codespace.dev',
         codeHash: crypto.createHash('sha256').update('123456').digest('hex'),
         expiresAt: new Date(Date.now() + 15 * 60 * 1000),
@@ -440,7 +444,7 @@ describe('AuthService', () => {
         createdAt: new Date(),
       };
       jest.spyOn(prismaService.passwordResetToken, 'findFirst').mockResolvedValue(token as any);
-      jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue({ id: BigInt(1) } as any);
+      jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue({ id: '1' } as any);
 
       const result = await service.resetPassword({
         email: 'developer@codespace.dev',
@@ -454,7 +458,7 @@ describe('AuthService', () => {
 
     it('should throw UnauthorizedException on invalid code', async () => {
       const token = {
-        id: BigInt(1),
+        id: '1',
         email: 'developer@codespace.dev',
         codeHash: crypto.createHash('sha256').update('654321').digest('hex'),
         expiresAt: new Date(Date.now() + 15 * 60 * 1000),
@@ -469,7 +473,7 @@ describe('AuthService', () => {
           code: '123456',
           newPassword: 'NewPassword123!',
         })
-      ).rejects.toThrow('Invalid or expired reset code');
+      ).rejects.toThrow('Invalid or expired verification code');
     });
   });
 
@@ -482,7 +486,7 @@ describe('AuthService', () => {
       await expect(service.revokeSession('1', '10')).resolves.toBeUndefined();
       expect(updateManySpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ id: BigInt(10), userId: BigInt(1), revokedAt: null }),
+          where: expect.objectContaining({ id: '10', userId: '1', revokedAt: null }),
           data: { revokedAt: expect.any(Date) },
         })
       );

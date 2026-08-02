@@ -28,9 +28,6 @@ export class SessionResponseDto {
   @ApiPropertyOptional({ example: 'Mozilla/5.0 (Windows NT 10.0)', description: 'HTTP User Agent' })
   userAgent?: string | null;
 
-  @ApiPropertyOptional({ example: '127.0.0.1', description: 'Client IP address' })
-  ipAddress?: string | null;
-
   @ApiPropertyOptional({
     example: 'Ho Chi Minh City, Vietnam',
     description: 'Geographical location derived from IP address',

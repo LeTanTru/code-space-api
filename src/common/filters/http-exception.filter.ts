@@ -43,12 +43,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
     status: number,
     exception: unknown
   ): { errorCode: string; message: string } {
-    // 1. Typed AppException — error code is explicit, no guessing needed
-    if (exception instanceof AppException) {
-      const res = exception.getResponse() as any;
+    // 1. Typed AppException or custom exception carrying explicit errorCode
+    if (exception instanceof AppException || (exception as any)?.errorCode) {
+      const res = (exception as HttpException).getResponse() as any;
       return {
-        errorCode: exception.errorCode,
-        message: res.message ?? exception.message,
+        errorCode: (exception as any).errorCode ?? res?.code,
+        message: typeof res === 'object' && res?.message ? res.message : (exception as any).message,
       };
     }
 

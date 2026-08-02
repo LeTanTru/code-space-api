@@ -1,14 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
-  EmailAlreadyExistsException,
-  EmailNotVerifiedException,
-  InvalidCredentialsException,
-  InvalidSessionException,
-  InvalidVerificationCodeException,
-  MissingRefreshTokenException,
-  SessionNotFoundException,
-  UserNotFoundException,
+  UnauthorizedException,
+  NotFoundException,
+  ConflictException,
 } from '@/common/exceptions/app.exception';
+import { ERROR_CODES } from '@/constants/error-code';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
@@ -23,6 +19,8 @@ import {
   DEFAULT_REFRESH_TOKEN_EXPIRES_IN_DAYS,
   OTP_TTL_MS,
 } from '@/constants/time';
+import { resolvePublicIp } from '@/utils/location.util';
+import { sha256, hashEquals, generateOtp, ARGON2_OPTIONS } from '@/utils/crypto.util';
 import { LoginDto } from '@/modules/auth/dto/login.dto';
 import { RegisterDto } from '@/modules/auth/dto/register.dto';
 import { VerifyEmailDto } from '@/modules/auth/dto/verify-email.dto';
@@ -34,13 +32,6 @@ import {
   SessionResponseDto,
   UserMeResponseDto,
 } from '@/modules/auth/dto/auth-response.dto';
-
-const ARGON2_OPTIONS: argon2.Options & { raw?: boolean } = {
-  type: argon2.argon2id,
-  memoryCost: 65536, // 64 MB
-  timeCost: 3,
-  parallelism: 4,
-};
 
 type ClientInfo = {
   ipAddress?: string;
@@ -62,27 +53,13 @@ export class AuthService {
   // Private helpers
   // ---------------------------------------------------------------------------
 
-  private sha256(value: string): string {
-    return crypto.createHash('sha256').update(value).digest('hex');
-  }
-
-  private hashEquals(hexA: string, hexB: string): boolean {
-    const bufA = Buffer.from(hexA, 'hex');
-    const bufB = Buffer.from(hexB, 'hex');
-    return bufA.length === bufB.length && crypto.timingSafeEqual(bufA, bufB);
-  }
-
-  private generateOtp(): string {
-    return crypto.randomInt(0, 1_000_000).toString().padStart(6, '0');
-  }
-
   private async signAccessToken(user: {
-    id: bigint | string;
+    id: string;
     email: string;
     role: string;
   }): Promise<{ accessToken: string; expiresIn: number }> {
     const payload = {
-      sub: user.id.toString(),
+      sub: user.id,
       email: user.email,
       role: user.role,
     };
@@ -99,15 +76,17 @@ export class AuthService {
   }
 
   private async createRefreshSession(
-    userId: bigint,
+    userId: string,
     clientInfo?: ClientInfo,
     deviceName?: string
   ): Promise<{ refreshToken: string; refreshTokenHash: string; expiresAt: Date }> {
     const refreshToken = crypto.randomBytes(40).toString('hex');
-    const refreshTokenHash = this.sha256(refreshToken);
+    const refreshTokenHash = sha256(refreshToken);
 
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + DEFAULT_REFRESH_TOKEN_EXPIRES_IN_DAYS);
+
+    const resolvedIp = resolvePublicIp(clientInfo?.ipAddress);
 
     await this.prisma.refreshToken.create({
       data: {
@@ -115,12 +94,17 @@ export class AuthService {
         tokenHash: refreshTokenHash,
         deviceName: deviceName || clientInfo?.userAgent || 'Unknown Device',
         userAgent: clientInfo?.userAgent || null,
-        ipAddress: clientInfo?.ipAddress || null,
+        ipAddress: resolvedIp,
         expiresAt,
       },
     });
 
     return { refreshToken, refreshTokenHash, expiresAt };
+  }
+
+  private getCookiePath(): string {
+    const apiPrefix = this.configService.get<string>('API_PREFIX') || 'api/v1';
+    return apiPrefix.startsWith('/') ? apiPrefix : `/${apiPrefix}`;
   }
 
   private setRefreshTokenCookie(res: Response, refreshToken: string) {
@@ -129,13 +113,23 @@ export class AuthService {
       httpOnly: true,
       secure: isProduction,
       sameSite: isProduction ? 'none' : 'lax',
-      path: '/api/v1',
+      path: this.getCookiePath(),
       maxAge: DEFAULT_REFRESH_TOKEN_EXPIRES_IN_DAYS * ONE_DAY_IN_MS,
     });
   }
 
+  private clearRefreshTokenCookie(res: Response) {
+    const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
+      path: this.getCookiePath(),
+    });
+  }
+
   private async issueTokenPair(
-    user: { id: bigint; email: string; name: string; avatarUrl: string | null; role: UserRole },
+    user: { id: string; email: string; name: string; avatarUrl: string | null; role: UserRole },
     res?: Response,
     clientInfo?: ClientInfo,
     deviceName?: string
@@ -158,7 +152,7 @@ export class AuthService {
       tokenType: 'Bearer',
       expiresIn,
       user: {
-        id: user.id.toString(),
+        id: user.id,
         email: user.email,
         name: user.name,
         avatarUrl: user.avatarUrl,
@@ -180,16 +174,19 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new InvalidCredentialsException();
+      throw new UnauthorizedException(ERROR_CODES.INVALID_CREDENTIALS, 'Invalid email or password');
     }
 
     const isPasswordValid = await argon2.verify(user.passwordHash, pass);
     if (!isPasswordValid) {
-      throw new InvalidCredentialsException();
+      throw new UnauthorizedException(ERROR_CODES.INVALID_CREDENTIALS, 'Invalid email or password');
     }
 
     if (!user.emailVerifiedAt) {
-      throw new EmailNotVerifiedException();
+      throw new UnauthorizedException(
+        ERROR_CODES.EMAIL_NOT_VERIFIED,
+        'Email not verified. Please check your inbox for the verification code'
+      );
     }
 
     return user;
@@ -216,7 +213,7 @@ export class AuthService {
     });
 
     if (existingUser) {
-      throw new EmailAlreadyExistsException();
+      throw new ConflictException(ERROR_CODES.EMAIL_ALREADY_EXISTS, 'Email already registered');
     }
 
     const passwordHash = await argon2.hash(dto.password, ARGON2_OPTIONS);
@@ -228,11 +225,11 @@ export class AuthService {
       },
     });
 
-    const code = this.generateOtp();
+    const code = generateOtp();
     await this.prisma.emailVerification.create({
       data: {
         email: dto.email,
-        codeHash: this.sha256(code),
+        codeHash: sha256(code),
         expiresAt: new Date(Date.now() + OTP_TTL_MS),
       },
     });
@@ -268,8 +265,11 @@ export class AuthService {
       orderBy: { createdAt: 'desc' },
     });
 
-    if (!verification || !this.hashEquals(verification.codeHash, this.sha256(dto.code))) {
-      throw new InvalidVerificationCodeException();
+    if (!verification || !hashEquals(verification.codeHash, sha256(dto.code))) {
+      throw new UnauthorizedException(
+        ERROR_CODES.INVALID_VERIFICATION_CODE,
+        'Invalid or expired verification code'
+      );
     }
 
     await this.prisma.$transaction(async (tx) => {
@@ -292,10 +292,13 @@ export class AuthService {
    */
   async refresh(refreshToken: string | undefined, res?: Response): Promise<RefreshResponseDto> {
     if (!refreshToken) {
-      throw new MissingRefreshTokenException();
+      throw new UnauthorizedException(
+        ERROR_CODES.MISSING_REFRESH_TOKEN,
+        'Refresh token not provided'
+      );
     }
 
-    const tokenHash = this.sha256(refreshToken);
+    const tokenHash = sha256(refreshToken);
     const now = new Date();
 
     const result = await this.prisma.$transaction(async (tx) => {
@@ -304,7 +307,7 @@ export class AuthService {
       });
 
       if (!session || session.revokedAt !== null || session.expiresAt <= now) {
-        throw new InvalidSessionException();
+        throw new UnauthorizedException(ERROR_CODES.INVALID_SESSION, 'Session expired or invalid');
       }
 
       await tx.refreshToken.update({
@@ -319,7 +322,7 @@ export class AuthService {
       await tx.refreshToken.create({
         data: {
           userId: session.userId,
-          tokenHash: this.sha256(newRefreshToken),
+          tokenHash: sha256(newRefreshToken),
           deviceName: session.deviceName,
           userAgent: session.userAgent,
           ipAddress: session.ipAddress,
@@ -336,7 +339,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UserNotFoundException('User account no longer exists');
+      throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND, 'User account no longer exists');
     }
 
     if (res) {
@@ -355,12 +358,11 @@ export class AuthService {
   /**
    * Revoke the current refresh session and clear the HTTP-only cookie
    */
-  async logout(refreshToken: string | undefined, userIdStr: string, res?: Response): Promise<void> {
+  async logout(refreshToken: string | undefined, userId: string, res?: Response): Promise<void> {
     if (refreshToken) {
-      const userId = BigInt(userIdStr);
       await this.prisma.refreshToken.updateMany({
         where: {
-          tokenHash: this.sha256(refreshToken),
+          tokenHash: sha256(refreshToken),
           userId,
           revokedAt: null,
         },
@@ -369,10 +371,10 @@ export class AuthService {
     }
 
     if (res) {
-      res.clearCookie('refreshToken', { path: '/api/v1/auth' });
+      this.clearRefreshTokenCookie(res);
     }
 
-    this.logger.log(`User logged out (session revoked): ${userIdStr}`);
+    this.logger.log(`User logged out (session revoked): ${userId}`);
   }
 
   /**
@@ -385,30 +387,32 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UserNotFoundException('Email not registered');
+      throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND, 'Email not registered');
     }
 
-    const code = this.generateOtp();
-    await this.prisma.passwordResetToken.create({
-      data: {
-        email,
-        codeHash: this.sha256(code),
-        expiresAt: new Date(Date.now() + OTP_TTL_MS),
-      },
-    });
+    const code = generateOtp();
+
+    await this.prisma.$transaction([
+      this.prisma.passwordResetToken.deleteMany({ where: { email } }),
+      this.prisma.passwordResetToken.create({
+        data: {
+          email,
+          codeHash: sha256(code),
+          expiresAt: new Date(Date.now() + OTP_TTL_MS),
+        },
+      }),
+    ]);
 
     void this.mailService.sendPasswordResetEmail(email, code, user.name).catch((err: Error) => {
-      this.logger.error(
-        `Background password reset email delivery failed for ${email}: ${err.message}`
-      );
+      this.logger.error(`Failed to send password reset email to ${email}: ${err.message}`);
     });
   }
 
   /**
-   * Validate reset OTP, set a new password, and revoke all sessions for the user
+   * Reset user password using OTP verification code
    */
   async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
-    const token = await this.prisma.passwordResetToken.findFirst({
+    const tokenRecord = await this.prisma.passwordResetToken.findFirst({
       where: {
         email: dto.email,
         usedAt: null,
@@ -417,17 +421,19 @@ export class AuthService {
       orderBy: { createdAt: 'desc' },
     });
 
-    if (!token || !this.hashEquals(token.codeHash, this.sha256(dto.code))) {
-      throw new InvalidVerificationCodeException('Invalid or expired reset code');
+    if (!tokenRecord || !hashEquals(tokenRecord.codeHash, sha256(dto.code))) {
+      throw new UnauthorizedException(
+        ERROR_CODES.INVALID_VERIFICATION_CODE,
+        'Invalid or expired verification code'
+      );
     }
 
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
-      select: { id: true },
     });
 
     if (!user) {
-      throw new InvalidVerificationCodeException('Invalid or expired reset code');
+      throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND, 'User account no longer exists');
     }
 
     const newPasswordHash = await argon2.hash(dto.newPassword, ARGON2_OPTIONS);
@@ -439,7 +445,7 @@ export class AuthService {
       });
 
       await tx.passwordResetToken.update({
-        where: { id: token.id },
+        where: { id: tokenRecord.id },
         data: { usedAt: new Date() },
       });
 
@@ -456,10 +462,7 @@ export class AuthService {
   /**
    * Revoke a specific session owned by the authenticated user (IDOR-safe)
    */
-  async revokeSession(userIdStr: string, sessionIdStr: string): Promise<void> {
-    const userId = BigInt(userIdStr);
-    const sessionId = BigInt(sessionIdStr);
-
+  async revokeSession(userId: string, sessionId: string): Promise<void> {
     const result = await this.prisma.refreshToken.updateMany({
       where: {
         id: sessionId,
@@ -470,17 +473,16 @@ export class AuthService {
     });
 
     if (result.count === 0) {
-      throw new SessionNotFoundException();
+      throw new NotFoundException(ERROR_CODES.SESSION_NOT_FOUND, 'Session not found');
     }
 
-    this.logger.log(`Session ${sessionIdStr} revoked for user ${userIdStr}`);
+    this.logger.log(`Session ${sessionId} revoked for user ${userId}`);
   }
 
   /**
    * Get active logged-in device sessions for user
    */
-  async getActiveSessions(userIdStr: string): Promise<SessionResponseDto[]> {
-    const userId = BigInt(userIdStr);
+  async getActiveSessions(userId: string): Promise<SessionResponseDto[]> {
     const sessions = await this.prisma.refreshToken.findMany({
       where: {
         userId,
@@ -499,7 +501,7 @@ export class AuthService {
     });
 
     return sessions.map((s) => ({
-      id: s.id.toString(),
+      id: s.id,
       deviceName: s.deviceName,
       userAgent: s.userAgent,
       ipAddress: s.ipAddress,
@@ -511,8 +513,7 @@ export class AuthService {
   /**
    * Get authenticated user profile with active device sessions list
    */
-  async getMe(userIdStr: string): Promise<UserMeResponseDto> {
-    const userId = BigInt(userIdStr);
+  async getMe(userId: string): Promise<UserMeResponseDto> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -525,13 +526,13 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UserNotFoundException('User account no longer exists');
+      throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND, 'User account no longer exists');
     }
 
-    const activeSessions = await this.getActiveSessions(userIdStr);
+    const activeSessions = await this.getActiveSessions(userId);
 
     return {
-      id: user.id.toString(),
+      id: user.id,
       email: user.email,
       name: user.name,
       avatarUrl: user.avatarUrl,
@@ -545,20 +546,18 @@ export class AuthService {
    * Requires password confirmation to prevent accidental or unauthorised deletion.
    * All related data is removed via Prisma cascade rules.
    */
-  async deleteAccount(userIdStr: string, password: string): Promise<void> {
-    const userId = BigInt(userIdStr);
-
+  async deleteAccount(userId: string, password: string): Promise<void> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
 
     if (!user) {
-      throw new UserNotFoundException('User account not found');
+      throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND, 'User account not found');
     }
 
     const isPasswordValid = await argon2.verify(user.passwordHash, password, ARGON2_OPTIONS);
     if (!isPasswordValid) {
-      throw new InvalidCredentialsException('Incorrect password');
+      throw new UnauthorizedException(ERROR_CODES.INVALID_CREDENTIALS, 'Incorrect password');
     }
 
     await this.prisma.user.delete({ where: { id: userId } });

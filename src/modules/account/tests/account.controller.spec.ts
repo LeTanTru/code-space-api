@@ -82,7 +82,7 @@ describe('AccountController', () => {
 
       await controller.deleteAccount(dto, mockReq);
 
-      expect(accountService.deleteAccount).toHaveBeenCalledWith('1', 'Password123!');
+      expect(accountService.deleteAccount).toHaveBeenCalledWith('1', 'Password123!', undefined);
     });
   });
 

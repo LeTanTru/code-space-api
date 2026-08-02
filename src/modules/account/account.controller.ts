@@ -6,10 +6,12 @@ import {
   Delete,
   Body,
   Req,
+  Res,
   HttpCode,
   HttpStatus,
   UseGuards,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { AccountService } from '@/modules/account/account.service';
 import { DeleteAccountDto } from '@/modules/auth/dto/delete-account.dto';
@@ -85,8 +87,12 @@ export class AccountController {
     status: HttpStatus.UNAUTHORIZED,
     description: 'Incorrect password or user not found.',
   })
-  async deleteAccount(@Body() dto: DeleteAccountDto, @Req() req: any): Promise<void> {
-    return this.accountService.deleteAccount(req.user.id, dto.password);
+  async deleteAccount(
+    @Body() dto: DeleteAccountDto,
+    @Req() req: any,
+    @Res({ passthrough: true }) res?: Response
+  ): Promise<void> {
+    return this.accountService.deleteAccount(req.user.id, dto.password, res);
   }
 
   @Post('change-password')
