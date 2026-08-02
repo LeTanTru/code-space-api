@@ -17,7 +17,7 @@ async function bootstrap() {
   app.useLogger(app.get(Logger));
 
   // Serve uploaded files statically at /uploads
-  const uploadsPath = path.join(process.cwd(), 'public', 'uploads');
+  const uploadsPath = path.join(process.cwd(), 'uploads');
   app.use('/uploads', express.static(uploadsPath));
 
   // Global Prefix & Middleware

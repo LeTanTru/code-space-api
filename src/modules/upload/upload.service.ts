@@ -8,7 +8,6 @@ import {
 } from '@/modules/upload/dto/upload-response.dto';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { randomUUID } from 'crypto';
 
 @Injectable()
 export class UploadService {
@@ -18,7 +17,7 @@ export class UploadService {
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService
   ) {
-    this.uploadDir = path.join(process.cwd(), 'public', 'uploads');
+    this.uploadDir = path.join(process.cwd(), 'uploads');
   }
 
   private async ensureDirExists(dirPath: string): Promise<void> {
@@ -77,6 +76,43 @@ export class UploadService {
     };
   }
 
+  async uploadAvatar(
+    userId: string,
+    file: Express.Multer.File
+  ): Promise<FileUploadResponseDto & { avatarUrl: string }> {
+    const fileRes = await this.uploadImage(userId, file);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { avatarUrl: fileRes.url },
+    });
+    return { ...fileRes, avatarUrl: fileRes.url };
+  }
+
+  async deleteAvatar(userId: string): Promise<FileDeleteResponseDto> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.avatarUrl) {
+      const filename = user.avatarUrl.split('/').pop();
+      if (filename) {
+        const imagePath = path.join(this.uploadDir, 'images', filename);
+        try {
+          await fs.unlink(imagePath);
+        } catch {
+          // Ignore if already deleted locally
+        }
+      }
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { avatarUrl: null },
+      });
+    }
+
+    return { filename: 'avatar', deleted: true };
+  }
+
   async uploadSound(
     userId: string,
     file: Express.Multer.File,
@@ -114,7 +150,6 @@ export class UploadService {
     const url = `${this.getAppBaseUrl()}/uploads/sounds/${filename}`;
     const name = displayName || path.parse(file.originalname).name;
 
-    // Save to Prisma CustomSound model if database record is needed
     try {
       const dataUrl = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
       await this.prisma.customSound.create({
@@ -128,7 +163,7 @@ export class UploadService {
         },
       });
     } catch {
-      // Non-blocking catch if DB save fails
+      // Ignore DB save error
     }
 
     return {
@@ -141,6 +176,26 @@ export class UploadService {
       sizeBytes: file.size,
       createdAt: new Date().toISOString(),
     };
+  }
+
+  async deleteSound(userId: string, soundId: string): Promise<FileDeleteResponseDto> {
+    const existing = await this.prisma.customSound.findFirst({
+      where: { id: soundId, userId },
+    });
+
+    if (existing) {
+      await this.prisma.customSound.delete({ where: { id: soundId } });
+    }
+
+    const filename = `${soundId}.mp3`;
+    const soundPath = path.join(this.uploadDir, 'sounds', filename);
+    try {
+      await fs.unlink(soundPath);
+    } catch {
+      // Ignore if file was not present locally
+    }
+
+    return { filename: soundId, deleted: true };
   }
 
   async deleteFile(userId: string, filename: string): Promise<FileDeleteResponseDto> {

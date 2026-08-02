@@ -25,11 +25,11 @@ All successful responses are automatically formatted by the global `ResponseInte
 
 ## Directory History Endpoints Overview
 
-| Endpoint                                |  Method  | Status |   Auth    | Success Message (`message`)                     | Rate Limit |
-| :-------------------------------------- | :------: | :----: | :-------: | :---------------------------------------------- | :--------: |
-| `/api/v1/directory-history/list`        |  `GET`   | `200`  | 🔒 Bearer | `Get directory history successfully`            |   Global   |
-| `/api/v1/directory-history/upsert`      |  `POST`  | `200`  | 🔒 Bearer | `Upsert directory history successfully`         |   Global   |
-| `/api/v1/directory-history/delete/:id`  | `DELETE` | `204`  | 🔒 Bearer | `Delete directory history item successfully`    |   Global   |
+| Endpoint                               |  Method  | Status |   Auth    | Success Message (`message`)                  | Rate Limit |
+| :------------------------------------- | :------: | :----: | :-------: | :------------------------------------------- | :--------: |
+| `/api/v1/directory-history/list`       |  `GET`   | `200`  | 🔒 Bearer | `Get directory history successfully`         |   Global   |
+| `/api/v1/directory-history/upsert`     |  `POST`  | `200`  | 🔒 Bearer | `Upsert directory history successfully`      |   Global   |
+| `/api/v1/directory-history/delete/:id` | `DELETE` | `204`  | 🔒 Bearer | `Delete directory history item successfully` |   Global   |
 
 ---
 
@@ -87,6 +87,7 @@ Adds a new directory path or updates its position in user history.
 Deletes a specific working directory history entry by ID.
 
 **Path Parameters:**
+
 - `id` (string, required): Unique UUID of the directory history record to delete.
 
 **Response (`204 No Content`):** No body returned on success.

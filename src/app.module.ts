@@ -14,6 +14,7 @@ import { WorkspaceModule } from '@/modules/workspace/workspace.module';
 import { PresetModule } from '@/modules/preset/preset.module';
 import { CliModule } from '@/modules/cli/cli.module';
 import { DirectoryHistoryModule } from '@/modules/directory-history/directory-history.module';
+import { SyncModule } from '@/modules/sync/sync.module';
 import { ResponseInterceptor } from '@/common/interceptors/response.interceptor';
 import { ONE_MINUTE_IN_MS } from '@/constants/time';
 
@@ -67,6 +68,7 @@ import { ONE_MINUTE_IN_MS } from '@/constants/time';
     PresetModule,
     CliModule,
     DirectoryHistoryModule,
+    SyncModule,
   ],
   providers: [
     // Global Response Interceptor (DI-aware, supports @ResponseMessage() decorator)

@@ -8,7 +8,10 @@ describe('UploadController', () => {
 
   const mockUploadService = {
     uploadImage: jest.fn(),
+    uploadAvatar: jest.fn(),
+    deleteAvatar: jest.fn(),
     uploadSound: jest.fn(),
+    deleteSound: jest.fn(),
     deleteFile: jest.fn(),
   };
 
@@ -44,6 +47,28 @@ describe('UploadController', () => {
     expect(uploadService.uploadImage).toHaveBeenCalledWith('user-123', dummyFile);
   });
 
+  it('should call uploadService.uploadAvatar', async () => {
+    const mockRes = {
+      id: 'img-1',
+      url: 'http://localhost/avatar.png',
+      avatarUrl: 'http://localhost/avatar.png',
+    } as any;
+    mockUploadService.uploadAvatar.mockResolvedValue(mockRes);
+
+    const res = await controller.uploadAvatar(dummyReq, dummyFile);
+    expect(res).toBe(mockRes);
+    expect(uploadService.uploadAvatar).toHaveBeenCalledWith('user-123', dummyFile);
+  });
+
+  it('should call uploadService.deleteAvatar', async () => {
+    const mockRes = { filename: 'avatar', deleted: true };
+    mockUploadService.deleteAvatar.mockResolvedValue(mockRes);
+
+    const res = await controller.deleteAvatar(dummyReq);
+    expect(res).toBe(mockRes);
+    expect(uploadService.deleteAvatar).toHaveBeenCalledWith('user-123');
+  });
+
   it('should call uploadService.uploadSound', async () => {
     const mockRes = { id: 'sound-1', url: 'http://localhost/sound.mp3' } as any;
     mockUploadService.uploadSound.mockResolvedValue(mockRes);
@@ -51,6 +76,15 @@ describe('UploadController', () => {
     const res = await controller.uploadSound(dummyReq, dummyFile, 'Alert');
     expect(res).toBe(mockRes);
     expect(uploadService.uploadSound).toHaveBeenCalledWith('user-123', dummyFile, 'Alert');
+  });
+
+  it('should call uploadService.deleteSound', async () => {
+    const mockRes = { filename: 'sound-1', deleted: true };
+    mockUploadService.deleteSound.mockResolvedValue(mockRes);
+
+    const res = await controller.deleteSound(dummyReq, 'sound-1');
+    expect(res).toBe(mockRes);
+    expect(uploadService.deleteSound).toHaveBeenCalledWith('user-123', 'sound-1');
   });
 
   it('should call uploadService.deleteFile', async () => {

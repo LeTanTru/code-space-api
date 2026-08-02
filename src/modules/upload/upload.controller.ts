@@ -52,16 +52,13 @@ export class UploadController {
   @ResponseMessage('Image uploaded successfully')
   @ApiOperation({
     summary: 'Upload Image Asset',
-    description:
-      'Uploads an image file (avatar or workspace icon). Maximum size: 5MB. Supported formats: JPEG, PNG, WebP, GIF, SVG.',
+    description: 'Uploads an image file. Maximum size: 5MB.',
   })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
       type: 'object',
-      properties: {
-        file: { type: 'string', format: 'binary' },
-      },
+      properties: { file: { type: 'string', format: 'binary' } },
       required: ['file'],
     },
   })
@@ -71,10 +68,6 @@ export class UploadController {
     'Image uploaded successfully',
     '/api/v1/upload/image'
   )
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: 'File missing, exceeds 5MB limit, or invalid image MIME type.',
-  })
   async uploadImage(
     @Req() req: RequestWithUser,
     @UploadedFile(
@@ -88,13 +81,62 @@ export class UploadController {
     return this.uploadService.uploadImage(req.user.id, file);
   }
 
+  @Post('avatar')
+  @UseInterceptors(FileInterceptor('file'))
+  @ResponseMessage('Avatar uploaded successfully')
+  @ApiOperation({
+    summary: 'Upload User Avatar Image',
+    description: 'Uploads avatar image file and updates user profile avatarUrl.',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+      required: ['file'],
+    },
+  })
+  @ApiSingleResponse(
+    FileUploadResponseDto,
+    HttpStatus.CREATED,
+    'Avatar uploaded successfully',
+    '/api/v1/upload/avatar'
+  )
+  async uploadAvatar(
+    @Req() req: RequestWithUser,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 })],
+        fileIsRequired: true,
+      })
+    )
+    file: Express.Multer.File
+  ): Promise<FileUploadResponseDto & { avatarUrl: string }> {
+    return this.uploadService.uploadAvatar(req.user.id, file);
+  }
+
+  @Delete('avatar')
+  @ResponseMessage('Avatar reset successfully')
+  @ApiOperation({
+    summary: 'Delete User Avatar Image',
+    description: 'Deletes user avatar image and resets profile avatarUrl to null.',
+  })
+  @ApiSingleResponse(
+    FileDeleteResponseDto,
+    HttpStatus.OK,
+    'Avatar reset successfully',
+    '/api/v1/upload/avatar'
+  )
+  async deleteAvatar(@Req() req: RequestWithUser): Promise<FileDeleteResponseDto> {
+    return this.uploadService.deleteAvatar(req.user.id);
+  }
+
   @Post('sound')
   @UseInterceptors(FileInterceptor('file'))
   @ResponseMessage('Sound file uploaded successfully')
   @ApiOperation({
     summary: 'Upload Custom Sound Asset',
-    description:
-      'Uploads a custom notification sound clip. Maximum size: 10MB. Supported formats: MP3, WAV, OGG, WebM.',
+    description: 'Uploads custom sound clip file. Maximum size: 10MB.',
   })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -102,7 +144,7 @@ export class UploadController {
       type: 'object',
       properties: {
         file: { type: 'string', format: 'binary' },
-        name: { type: 'string', example: 'Custom Chime Alert' },
+        name: { type: 'string', example: 'Custom Chime' },
       },
       required: ['file'],
     },
@@ -113,10 +155,6 @@ export class UploadController {
     'Sound file uploaded successfully',
     '/api/v1/upload/sound'
   )
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: 'File missing, exceeds 10MB limit, or invalid sound MIME type.',
-  })
   async uploadSound(
     @Req() req: RequestWithUser,
     @UploadedFile(
@@ -131,11 +169,30 @@ export class UploadController {
     return this.uploadService.uploadSound(req.user.id, file, name);
   }
 
+  @Delete('sound/:id')
+  @ResponseMessage('Custom sound deleted successfully')
+  @ApiOperation({
+    summary: 'Delete Custom Sound Asset',
+    description: 'Deletes custom sound clip record by ID.',
+  })
+  @ApiSingleResponse(
+    FileDeleteResponseDto,
+    HttpStatus.OK,
+    'Custom sound deleted successfully',
+    '/api/v1/upload/sound'
+  )
+  async deleteSound(
+    @Req() req: RequestWithUser,
+    @Param('id') id: string
+  ): Promise<FileDeleteResponseDto> {
+    return this.uploadService.deleteSound(req.user.id, id);
+  }
+
   @Delete('delete/:filename')
   @ResponseMessage('File deleted successfully')
   @ApiOperation({
     summary: 'Delete Uploaded Asset',
-    description: 'Removes a previously uploaded media file from local storage.',
+    description: 'Removes a previously uploaded media file.',
   })
   @ApiSingleResponse(
     FileDeleteResponseDto,
@@ -143,10 +200,6 @@ export class UploadController {
     'File deleted successfully',
     '/api/v1/upload/delete'
   )
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Specified filename was not found or already deleted.',
-  })
   async deleteFile(
     @Req() req: RequestWithUser,
     @Param('filename') filename: string

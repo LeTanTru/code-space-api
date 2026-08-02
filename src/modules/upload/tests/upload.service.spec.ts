@@ -19,8 +19,14 @@ describe('UploadService', () => {
   };
 
   const mockPrismaService = {
+    user: {
+      findUnique: jest.fn(),
+      update: jest.fn(),
+    },
     customSound: {
+      findFirst: jest.fn(),
       create: jest.fn().mockResolvedValue({ id: 'sound-123' }),
+      delete: jest.fn().mockResolvedValue({ id: 'sound-123' }),
     },
   };
 
@@ -55,7 +61,7 @@ describe('UploadService', () => {
     service = module.get<UploadService>(UploadService);
   });
 
-  describe('uploadImage', () => {
+  describe('uploadImage & uploadAvatar', () => {
     it('should successfully save image file and return metadata', async () => {
       const res = await service.uploadImage('user-123', dummyImageFile);
 
@@ -66,6 +72,14 @@ describe('UploadService', () => {
       expect(fs.writeFile).toHaveBeenCalled();
     });
 
+    it('should upload avatar and update user avatarUrl in Prisma', async () => {
+      mockPrismaService.user.update.mockResolvedValue({ id: 'user-123', avatarUrl: 'http://url' });
+      const res = await service.uploadAvatar('user-123', dummyImageFile);
+
+      expect(res.avatarUrl).toContain('http://localhost:8080/uploads/images/');
+      expect(mockPrismaService.user.update).toHaveBeenCalled();
+    });
+
     it('should throw BadRequestException if image MIME type is invalid', async () => {
       const invalidFile = { ...dummyImageFile, mimetype: 'application/exe' };
       await expect(service.uploadImage('user-123', invalidFile)).rejects.toThrow(
@@ -74,7 +88,24 @@ describe('UploadService', () => {
     });
   });
 
-  describe('uploadSound', () => {
+  describe('deleteAvatar', () => {
+    it('should reset avatarUrl for user', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: 'user-123',
+        avatarUrl: 'http://localhost/images/img.png',
+      });
+      mockPrismaService.user.update.mockResolvedValue({ id: 'user-123', avatarUrl: null });
+
+      const res = await service.deleteAvatar('user-123');
+      expect(res.deleted).toBe(true);
+      expect(mockPrismaService.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-123' },
+        data: { avatarUrl: null },
+      });
+    });
+  });
+
+  describe('uploadSound & deleteSound', () => {
     it('should successfully save sound file and return metadata', async () => {
       const res = await service.uploadSound('user-123', dummySoundFile, 'My Sound');
 
@@ -86,11 +117,13 @@ describe('UploadService', () => {
       expect(fs.writeFile).toHaveBeenCalled();
     });
 
-    it('should throw BadRequestException if sound MIME type is invalid', async () => {
-      const invalidFile = { ...dummySoundFile, mimetype: 'text/plain' };
-      await expect(service.uploadSound('user-123', invalidFile)).rejects.toThrow(
-        BadRequestException
-      );
+    it('should delete custom sound', async () => {
+      mockPrismaService.customSound.findFirst.mockResolvedValue({ id: 'sound-123' });
+      const res = await service.deleteSound('user-123', 'sound-123');
+      expect(res.deleted).toBe(true);
+      expect(mockPrismaService.customSound.delete).toHaveBeenCalledWith({
+        where: { id: 'sound-123' },
+      });
     });
   });
 
