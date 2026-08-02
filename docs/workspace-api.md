@@ -1,4 +1,4 @@
-# CodeSpace API — Workspace Module Documentation (`/api/v1/workspaces`)
+# CodeSpace API — Workspace Module Documentation (`/api/v1/workspace`)
 
 This document provides detailed API specifications, response envelope structures, request DTOs, and error scenarios for cloud workspace management.
 
@@ -16,7 +16,7 @@ All successful responses follow the standard JSON envelope:
   "meta": {
     "timestamp": 1785564382331,
     "version": "v1",
-    "path": "/api/v1/workspaces"
+    "path": "/api/v1/workspace/<action>"
   }
 }
 ```
@@ -25,19 +25,19 @@ All successful responses follow the standard JSON envelope:
 
 ## Workspace Endpoints Overview
 
-| Endpoint                 |  Method  | Status |   Auth    | Success Message (`message`)          | Rate Limit |
-| :----------------------- | :------: | :----: | :-------: | :----------------------------------- | :--------: |
-| `/api/v1/workspaces`     |  `GET`   | `200`  | 🔒 Bearer | `Get workspaces successfully`        |   Global   |
-| `/api/v1/workspaces`     |  `POST`  | `201`  | 🔒 Bearer | `Create workspace successfully`      |   Global   |
-| `/api/v1/workspaces/:id` |  `GET`   | `200`  | 🔒 Bearer | `Get workspace details successfully` |   Global   |
-| `/api/v1/workspaces/:id` |  `PUT`   | `200`  | 🔒 Bearer | `Update workspace successfully`      |   Global   |
-| `/api/v1/workspaces/:id` | `DELETE` | `204`  | 🔒 Bearer | `Delete workspace successfully`      |   Global   |
+| Endpoint                       |  Method  | Status |   Auth    | Success Message (`message`)          | Rate Limit |
+| :----------------------------- | :------: | :----: | :-------: | :----------------------------------- | :--------: |
+| `/api/v1/workspace/list`       |  `GET`   | `200`  | 🔒 Bearer | `Get workspaces successfully`        |   Global   |
+| `/api/v1/workspace/create`     |  `POST`  | `201`  | 🔒 Bearer | `Create workspace successfully`      |   Global   |
+| `/api/v1/workspace/get/:id`    |  `GET`   | `200`  | 🔒 Bearer | `Get workspace details successfully` |   Global   |
+| `/api/v1/workspace/update/:id` |  `PUT`   | `200`  | 🔒 Bearer | `Update workspace successfully`      |   Global   |
+| `/api/v1/workspace/delete/:id` | `DELETE` | `204`  | 🔒 Bearer | `Delete workspace successfully`      |   Global   |
 
 ---
 
 ## Endpoint Details & Examples
 
-### `GET /api/v1/workspaces`
+### `GET /api/v1/workspace/list`
 
 Retrieves all cloud-synced workspaces owned by the authenticated user.
 
@@ -66,13 +66,13 @@ Retrieves all cloud-synced workspaces owned by the authenticated user.
     }
   ],
   "message": "Get workspaces successfully",
-  "meta": { "timestamp": 1785564382331, "version": "v1", "path": "/api/v1/workspaces" }
+  "meta": { "timestamp": 1785564382331, "version": "v1", "path": "/api/v1/workspace/list" }
 }
 ```
 
 ---
 
-### `POST /api/v1/workspaces`
+### `POST /api/v1/workspace/create`
 
 Creates a new cloud-synced workspace.
 
@@ -107,19 +107,25 @@ Creates a new cloud-synced workspace.
     "rootPath": "d:/CODE/Web/Projects/code-space-api",
     "color": "#3b82f6",
     "icon": "server",
-    "layoutConfig": { ... },
-    "terminals": [ ... ],
+    "layoutConfig": { "count": 2 },
+    "terminals": [],
     "createdAt": "2026-08-02T09:00:00.000Z",
     "updatedAt": "2026-08-02T09:00:00.000Z"
   },
   "message": "Create workspace successfully",
-  "meta": { "timestamp": 1785564382331, "version": "v1", "path": "/api/v1/workspaces" }
+  "meta": { "timestamp": 1785564382331, "version": "v1", "path": "/api/v1/workspace/create" }
 }
 ```
 
 ---
 
-### `PUT /api/v1/workspaces/:id`
+### `GET /api/v1/workspace/get/:id`
+
+Retrieves details of a single cloud workspace by ID.
+
+---
+
+### `PUT /api/v1/workspace/update/:id`
 
 Updates an existing workspace (layout, tab colors, or terminal configurations).
 
@@ -136,7 +142,7 @@ Updates an existing workspace (layout, tab colors, or terminal configurations).
 
 ---
 
-### `DELETE /api/v1/workspaces/:id`
+### `DELETE /api/v1/workspace/delete/:id`
 
 Permanently deletes a cloud workspace record.
 

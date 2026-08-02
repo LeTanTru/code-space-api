@@ -2,17 +2,17 @@
 
 ## Architecture
 
-`code-space-desktop` operates as an offline-first client. Changes are saved locally to `userData/db.json` and synchronized in the background with `code-space-api`.
+`code-space-desktop` operates with an online-only cloud architecture requiring an active network connection to `code-space-api`. Local changes are persisted and synchronized with `code-space-api` over REST.
 
 ```
-Desktop App (Zustand + db.json) <──> Express API (/sync) <──> MySQL 8.0
+Desktop App (Zustand) <── REST API (/sync) ──> NestJS API <──> MySQL 8.0
 ```
 
 ## Sync Rules
 
-1. **Local Autonomy**: Desktop mutations write to disk immediately without waiting for API responses.
+1. **Online Requirement**: Desktop application requires an active internet connection to communicate with `code-space-api`.
 2. **Debounced Push**: Electron main process buffers local changes (2s debounce) before invoking `POST /api/v1/sync/push`.
-3. **Last-Write-Wins (LWW)**: Server reconciles conflict by comparing `updatedAt` timestamps. Stale payloads receive an authoritative server pull payload to reconcile local storage.
+3. **Last-Write-Wins (LWW)**: Server reconciles state synchronization by comparing `updatedAt` timestamps. Stale payloads receive an authoritative server pull payload to reconcile state.
 
 ## Data Structure
 

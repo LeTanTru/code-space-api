@@ -123,7 +123,7 @@ model UserSettings {
   defaultDirectory     String              @default("") @map("default_directory") @db.VarChar(1024)
   soundNotifications   Boolean             @default(true) @map("sound_notifications")
   desktopNotifications Boolean             @default(true) @map("desktop_notifications")
-  selectedSoundId      String              @default("default") @map("selected_sound_id") @db.VarChar(128)
+  selectedSoundId      String              @default("default") @map("selected_sound_id") @db.VarChar(36)
   autoRestoreSession   Boolean             @default(true) @map("auto_restore_session")
   updatedAt            DateTime            @updatedAt @map("updated_at") @db.DateTime(3)
 
@@ -137,7 +137,7 @@ model UserSettings {
 // ----------------------------------------------------------------------------
 
 model CustomSound {
-  id        String   @id @db.VarChar(128)
+  id        String   @id @default(uuid()) @db.VarChar(36)
   userId    String   @map("user_id") @db.VarChar(36)
   name      String   @db.VarChar(255)
   dataUrl   String   @map("data_url") @db.LongText
@@ -156,7 +156,7 @@ model CustomSound {
 // ----------------------------------------------------------------------------
 
 model CliTool {
-  id           String   @id @db.VarChar(128)
+  id           String   @id @default(uuid()) @db.VarChar(36)
   userId       String?  @map("user_id") @db.VarChar(36)
   name         String   @db.VarChar(255)
   command      String   @db.VarChar(512)
@@ -166,9 +166,9 @@ model CliTool {
   createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(3)
   updatedAt    DateTime @updatedAt @map("updated_at") @db.DateTime(3)
 
-  user                  User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  overrides             CliBuiltinOverride[]
-  presetsAsDefault      WorkspacePreset[]
+  user                 User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  overrides            CliBuiltinOverride[]
+  presetsAsDefault     WorkspacePreset[]
   presetTerminalsAsCli PresetTerminal[]
 
   @@index([userId], map: "idx_cli_tools_user_id")
@@ -178,7 +178,7 @@ model CliTool {
 model CliBuiltinOverride {
   id           String   @id @default(uuid()) @db.VarChar(36)
   userId       String   @map("user_id") @db.VarChar(36)
-  cliId        String   @map("cli_id") @db.VarChar(128)
+  cliId        String   @map("cli_id") @db.VarChar(36)
   name         String?  @db.VarChar(255)
   command      String?  @db.VarChar(512)
   checkCommand String?  @map("check_command") @db.VarChar(512)
@@ -197,23 +197,23 @@ model CliBuiltinOverride {
 // ----------------------------------------------------------------------------
 
 model WorkspacePreset {
-  id             String   @id @db.VarChar(128)
-  userId         String   @map("user_id") @db.VarChar(36)
-  name           String   @db.VarChar(255)
-  description    String?  @db.Text
-  color          String   @default("#6366f1") @db.VarChar(7)
-  rootPath       String   @map("root_path") @db.VarChar(1024)
-  terminalCount  Int      @default(1) @map("terminal_count") @db.UnsignedSmallInt
-  selectedCli    String?  @map("selected_cli") @db.VarChar(128)
-  ideVscode      Boolean  @default(false) @map("ide_vscode")
-  ideAntigravity Boolean  @default(false) @map("ide_antigravity")
-  layout         Json?    @db.Json
-  createdAt      BigInt   @map("created_at") @db.UnsignedBigInt
-  updatedAt      BigInt   @map("updated_at") @db.UnsignedBigInt
+  id             String  @id @default(uuid()) @db.VarChar(36)
+  userId         String  @map("user_id") @db.VarChar(36)
+  name           String  @db.VarChar(255)
+  description    String? @db.Text
+  color          String  @default("#6366f1") @db.VarChar(7)
+  rootPath       String  @map("root_path") @db.VarChar(1024)
+  terminalCount  Int     @default(1) @map("terminal_count") @db.UnsignedSmallInt
+  selectedCli    String? @map("selected_cli") @db.VarChar(36)
+  ideVscode      Boolean @default(false) @map("ide_vscode")
+  ideAntigravity Boolean @default(false) @map("ide_antigravity")
+  layout         Json?   @db.Json
+  createdAt      BigInt  @map("created_at") @db.UnsignedBigInt
+  updatedAt      BigInt  @map("updated_at") @db.UnsignedBigInt
 
-  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  defaultCli    CliTool?         @relation(fields: [selectedCli], references: [id], onDelete: SetNull)
-  terminals     PresetTerminal[]
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  defaultCli CliTool?         @relation(fields: [selectedCli], references: [id], onDelete: SetNull)
+  terminals  PresetTerminal[]
 
   @@index([userId], map: "idx_workspace_presets_user_id")
   @@map("workspace_presets")
@@ -221,8 +221,8 @@ model WorkspacePreset {
 
 model PresetTerminal {
   id          String  @id @default(uuid()) @db.VarChar(36)
-  presetId    String  @map("preset_id") @db.VarChar(128)
-  cli         String? @db.VarChar(128)
+  presetId    String  @map("preset_id") @db.VarChar(36)
+  cli         String? @db.VarChar(36)
   cwd         String  @db.VarChar(1024)
   customTitle String? @map("custom_title") @db.VarChar(255)
   command     String? @db.VarChar(512)

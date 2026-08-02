@@ -17,7 +17,7 @@ export class UpdateProfileDto {
     description: 'Updated avatar image URL',
   })
   @IsOptional()
-  @IsUrl()
+  @IsUrl({ require_tld: false })
   @MaxLength(1024)
   avatarUrl?: string;
 }

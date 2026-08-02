@@ -4,6 +4,9 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { Logger } from 'nestjs-pino';
 import * as cookieParser from 'cookie-parser';
 
+import * as express from 'express';
+import * as path from 'path';
+
 import { AppModule } from '@/app.module';
 import { HttpExceptionFilter } from '@/common/filters/http-exception.filter';
 
@@ -12,6 +15,10 @@ async function bootstrap() {
 
   // Structured Logging via Pino
   app.useLogger(app.get(Logger));
+
+  // Serve uploaded files statically at /uploads
+  const uploadsPath = path.join(process.cwd(), 'uploads');
+  app.use('/uploads', express.static(uploadsPath));
 
   // Global Prefix & Middleware
   const globalPrefix = process.env.API_PREFIX || 'api/v1';

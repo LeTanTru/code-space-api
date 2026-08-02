@@ -80,11 +80,14 @@ Below is the dictionary of standardized `code` values returned in error payloads
 Detailed REST endpoint contracts are documented in module-specific guides:
 
 - **Authentication**: [`docs/auth-api.md`](auth-api.md) — `login`, `register`, `verify-email`, `refresh`, `logout`, `forgot-password`, `reset-password`
-- **Account Management**: [`docs/account-api.md`](account-api.md) — `GET profile`, `PUT update/profile`, `POST change-password`, `DELETE delete`
+- **Account Management**: [`docs/account-api.md`](account-api.md) — `GET profile`, `PUT update`, `POST change-password`, `DELETE delete`
 - **Session Management**: [`docs/session-api.md`](session-api.md) — `GET session/list`, `DELETE session/delete/:id`
-- **Workspace Sync**: [`docs/workspace-api.md`](workspace-api.md) — `GET`, `POST`, `PUT`, `DELETE /workspaces`
-- **Layout Presets**: [`docs/preset-api.md`](preset-api.md) — `GET`, `POST`, `PUT`, `DELETE /presets`
-- **Settings Sync**: [`docs/settings-api.md`](settings-api.md) — `GET`, `PUT /settings`
-- **Full State Backup**: [`docs/sync-api.md`](sync-api.md) — `POST /sync/push`, `GET /sync/pull`
+- **Workspace Sync**: [`docs/workspace-api.md`](workspace-api.md) — `GET`, `POST`, `GET :id`, `PUT :id`, `DELETE :id /workspaces`
+- **Layout Presets**: [`docs/preset-api.md`](preset-api.md) — `GET`, `POST`, `GET :id`, `PUT :id`, `DELETE :id /presets`
+- **Settings Sync**: [`docs/settings-api.md`](settings-api.md) — `GET /setting/get`, `PUT /setting/update`
+- **CLI Tools & Overrides**: [`docs/cli-api.md`](cli-api.md) — `GET`, `POST`, `PUT`, `DELETE /cli`, `POST`, `DELETE /cli/override`
+- **Directory History**: [`docs/directory-history-api.md`](directory-history-api.md) — `GET`, `POST`, `DELETE /directory-history`
+- **Media Uploads**: [`docs/upload-api.md`](upload-api.md) — `POST /upload/image`, `POST /upload/sound`, `DELETE /upload/delete/:filename`
+- **Full State Backup**: [`docs/sync-api.md`](sync-api.md) — `POST /sync/push`, `GET /sync/pull`, `GET /sync/logs`
 - **Health Indicators**: [`docs/health-api.md`](health-api.md) — `GET /health`
 - **Rate Limiting**: [`docs/rate-limiter.md`](rate-limiter.md) — Throttling limits & HTTP 429 specs
