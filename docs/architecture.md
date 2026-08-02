@@ -209,7 +209,7 @@ The global `ResponseInterceptor` automatically wraps all controller return value
 
 ### Error Response (`HTTP 4xx / 5xx`)
 
-The global `HttpExceptionFilter` formats all thrown `HttpException` instances:
+The global `HttpExceptionFilter` formats all thrown exceptions. Custom base HTTP exceptions (`UnauthorizedException`, `NotFoundException`, `ConflictException`, `BadRequestException`, `ForbiddenException` in `src/common/exceptions/app.exception.ts`) extend NestJS's native exception classes while carrying a typed `errorCode` property:
 
 ```json
 {
@@ -222,6 +222,8 @@ The global `HttpExceptionFilter` formats all thrown `HttpException` instances:
   }
 }
 ```
+
+> **Cookie Path Standard**: Refresh token cookies (`refreshToken`) use `path: '/api/v1'` (aligned via `API_PREFIX` configuration) across both `setRefreshTokenCookie` and `clearRefreshTokenCookie`, ensuring full cookie deletion on logout and account deletion.
 
 ---
 

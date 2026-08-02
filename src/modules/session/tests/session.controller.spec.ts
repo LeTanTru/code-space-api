@@ -11,7 +11,6 @@ describe('SessionController', () => {
       id: '10',
       deviceName: 'Windows PC',
       userAgent: 'Mozilla/5.0',
-      ipAddress: '127.0.0.1',
       createdAt: new Date('2026-08-01T11:45:00.000Z'),
       expiresAt: new Date('2026-08-08T11:45:00.000Z'),
     },
@@ -44,7 +43,7 @@ describe('SessionController', () => {
       const mockReq: any = { user: { id: '1' } };
       const result = await controller.getSessions(mockReq);
 
-      expect(sessionService.getSessions).toHaveBeenCalledWith('1');
+      expect(sessionService.getSessions).toHaveBeenCalledWith('1', undefined);
       expect(result).toEqual(mockSessions);
     });
   });

@@ -1,6 +1,10 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/modules/prisma/prisma.service';
 import { SessionResponseDto } from '@/modules/auth/dto/auth-response.dto';
+import { NotFoundException } from '@/common/exceptions/app.exception';
+import { ERROR_CODES } from '@/constants/error-code';
+import { getLocationFromIp } from '@/utils/location.util';
+import { sha256 } from '@/utils/crypto.util';
 
 @Injectable()
 export class SessionService {
@@ -11,8 +15,7 @@ export class SessionService {
   /**
    * Get active logged-in device sessions for user
    */
-  async getSessions(userIdStr: string): Promise<SessionResponseDto[]> {
-    const userId = BigInt(userIdStr);
+  async getSessions(userId: string, currentRefreshToken?: string): Promise<SessionResponseDto[]> {
     const sessions = await this.prisma.refreshToken.findMany({
       where: {
         userId,
@@ -22,6 +25,7 @@ export class SessionService {
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
+        tokenHash: true,
         deviceName: true,
         userAgent: true,
         ipAddress: true,
@@ -30,11 +34,14 @@ export class SessionService {
       },
     });
 
-    return sessions.map((s) => ({
-      id: s.id.toString(),
+    const currentHash = currentRefreshToken ? sha256(currentRefreshToken) : null;
+
+    return sessions.map((s, index) => ({
+      id: s.id,
       deviceName: s.deviceName,
       userAgent: s.userAgent,
-      ipAddress: s.ipAddress,
+      location: getLocationFromIp(s.ipAddress),
+      isCurrent: currentHash ? s.tokenHash === currentHash : sessions.length === 1 || index === 0,
       createdAt: s.createdAt,
       expiresAt: s.expiresAt,
     }));
@@ -43,10 +50,7 @@ export class SessionService {
   /**
    * Revoke a specific session owned by the authenticated user (IDOR-safe)
    */
-  async revokeSession(userIdStr: string, sessionIdStr: string): Promise<void> {
-    const userId = BigInt(userIdStr);
-    const sessionId = BigInt(sessionIdStr);
-
+  async revokeSession(userId: string, sessionId: string): Promise<void> {
     const result = await this.prisma.refreshToken.updateMany({
       where: {
         id: sessionId,
@@ -57,9 +61,9 @@ export class SessionService {
     });
 
     if (result.count === 0) {
-      throw new NotFoundException('Session not found');
+      throw new NotFoundException(ERROR_CODES.SESSION_NOT_FOUND, 'Session not found');
     }
 
-    this.logger.log(`Session ${sessionIdStr} revoked for user ${userIdStr}`);
+    this.logger.log(`Session ${sessionId} revoked for user ${userId}`);
   }
 }

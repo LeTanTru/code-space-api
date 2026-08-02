@@ -164,7 +164,7 @@ Requires the `refreshToken` HTTP-only cookie set during login.
 
 Requires `Authorization: Bearer <accessToken>`.
 
-**Response (`204 No Content`):** Empty body.
+**Response (`204 No Content`):** Empty body. Revokes current refresh session in database and clears the `refreshToken` HTTP-only cookie (`path: /api/v1`).
 
 ---
 

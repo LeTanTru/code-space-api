@@ -15,19 +15,32 @@ describe('AuthService', () => {
   let mailService: MailService;
 
   const mockUser = {
-    id: BigInt(1),
+    id: '1',
     email: 'developer@codespace.dev',
     passwordHash: '',
     name: 'Alex Dev',
     avatarUrl: null,
     role: UserRole.USER,
+    emailVerifiedAt: new Date('2026-01-01T00:00:00.000Z'),
+    createdAt: new Date('2026-08-01T11:45:00.000Z'),
+    updatedAt: new Date(),
+  };
+
+  const mockUnverifiedUser = {
+    id: '2',
+    email: 'unverified@codespace.dev',
+    passwordHash: '',
+    name: 'Unverified User',
+    avatarUrl: null,
+    role: UserRole.USER,
+    emailVerifiedAt: null,
     createdAt: new Date('2026-08-01T11:45:00.000Z'),
     updatedAt: new Date(),
   };
 
   const mockSessions = [
     {
-      id: BigInt(10),
+      id: '10',
       deviceName: 'Windows Desktop',
       userAgent: 'Mozilla/5.0',
       ipAddress: '127.0.0.1',
@@ -47,6 +60,7 @@ describe('AuthService', () => {
 
   beforeAll(async () => {
     mockUser.passwordHash = await argon2.hash('Password123!');
+    mockUnverifiedUser.passwordHash = await argon2.hash('Test1234!');
     mockVerification.codeHash = crypto.createHash('sha256').update('123456').digest('hex');
   });
 
@@ -63,19 +77,20 @@ describe('AuthService', () => {
               update: jest.fn(),
             },
             refreshToken: {
-              create: jest.fn().mockResolvedValue({ id: BigInt(1) }),
+              create: jest.fn().mockResolvedValue({ id: '1' }),
               findMany: jest.fn().mockResolvedValue(mockSessions),
               findUnique: jest.fn(),
               update: jest.fn(),
               updateMany: jest.fn().mockResolvedValue({ count: 1 }),
             },
             emailVerification: {
-              create: jest.fn().mockResolvedValue({ id: BigInt(1) }),
+              create: jest.fn().mockResolvedValue({ id: '1' }),
               findFirst: jest.fn(),
               update: jest.fn(),
             },
             passwordResetToken: {
-              create: jest.fn().mockResolvedValue({ id: BigInt(1) }),
+              create: jest.fn().mockResolvedValue({ id: '1' }),
+              deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
               findFirst: jest.fn(),
               update: jest.fn(),
             },
@@ -95,8 +110,8 @@ describe('AuthService', () => {
                     update: jest.fn().mockResolvedValue({}),
                     updateMany: jest.fn().mockResolvedValue({ count: 3 }),
                     findUnique: jest.fn().mockResolvedValue({
-                      id: BigInt(1),
-                      userId: BigInt(1),
+                      id: '1',
+                      userId: '1',
                       tokenHash: 'hash',
                       deviceName: 'Windows Desktop',
                       userAgent: 'Mozilla/5.0',
@@ -104,7 +119,7 @@ describe('AuthService', () => {
                       expiresAt: new Date(Date.now() + 86400000),
                       revokedAt: null,
                     }),
-                    create: jest.fn().mockResolvedValue({ id: BigInt(2) }),
+                    create: jest.fn().mockResolvedValue({ id: '2' }),
                   },
                 });
               }
@@ -153,12 +168,13 @@ describe('AuthService', () => {
   });
 
   describe('validateUser', () => {
-    it('should validate and return user for valid credentials', async () => {
+    it('should validate and return user for valid credentials with verified email', async () => {
       jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue(mockUser as any);
 
       const result = await service.validateUser('developer@codespace.dev', 'Password123!');
       expect(result).toBeDefined();
       expect(result.email).toEqual('developer@codespace.dev');
+      expect(result.emailVerifiedAt).not.toBeNull();
     });
 
     it('should throw UnauthorizedException for non-existent email', async () => {
@@ -175,6 +191,25 @@ describe('AuthService', () => {
       await expect(
         service.validateUser('developer@codespace.dev', 'WrongPassword!')
       ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should throw UnauthorizedException when email is not yet verified', async () => {
+      jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue(mockUnverifiedUser as any);
+
+      await expect(service.validateUser('unverified@codespace.dev', 'Test1234!')).rejects.toThrow(
+        new UnauthorizedException(
+          'Email not verified. Please check your inbox for the verification code'
+        )
+      );
+    });
+
+    it('should not reveal account existence when email is unverified (still checks password first)', async () => {
+      jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue(mockUnverifiedUser as any);
+
+      // Wrong password on unverified account → generic 401, not the unverified message
+      await expect(
+        service.validateUser('unverified@codespace.dev', 'WrongPassword!')
+      ).rejects.toThrow(new UnauthorizedException('Invalid email or password'));
     });
   });
 
@@ -210,7 +245,7 @@ describe('AuthService', () => {
         expect.any(String),
         expect.objectContaining({
           httpOnly: true,
-          path: '/api/v1/auth',
+          path: '/api/v1',
         })
       );
     });
@@ -318,7 +353,7 @@ describe('AuthService', () => {
       expect(mockResponse.cookie).toHaveBeenCalledWith(
         'refreshToken',
         expect.any(String),
-        expect.objectContaining({ httpOnly: true, path: '/api/v1/auth' })
+        expect.objectContaining({ httpOnly: true, path: '/api/v1' })
       );
     });
 
@@ -354,12 +389,15 @@ describe('AuthService', () => {
 
       expect(updateManySpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ userId: BigInt(1), revokedAt: null }),
+          where: expect.objectContaining({ userId: '1', revokedAt: null }),
           data: { revokedAt: expect.any(Date) },
         })
       );
       expect(mockResponse.clearCookie).toHaveBeenCalledWith('refreshToken', {
-        path: '/api/v1/auth',
+        httpOnly: true,
+        secure: false,
+        sameSite: 'lax',
+        path: '/api/v1',
       });
     });
   });
@@ -368,7 +406,7 @@ describe('AuthService', () => {
     it('should store OTP hashed and send email when user exists', async () => {
       jest
         .spyOn(prismaService.user, 'findUnique')
-        .mockResolvedValue({ id: BigInt(1), name: 'Alex Dev' } as any);
+        .mockResolvedValue({ id: '1', name: 'Alex Dev' } as any);
       const createSpy = jest.spyOn(prismaService.passwordResetToken, 'create');
 
       const result = await service.forgotPassword('developer@codespace.dev');
@@ -398,7 +436,7 @@ describe('AuthService', () => {
   describe('resetPassword', () => {
     it('should update password and revoke all sessions on valid code', async () => {
       const token = {
-        id: BigInt(1),
+        id: '1',
         email: 'developer@codespace.dev',
         codeHash: crypto.createHash('sha256').update('123456').digest('hex'),
         expiresAt: new Date(Date.now() + 15 * 60 * 1000),
@@ -406,7 +444,7 @@ describe('AuthService', () => {
         createdAt: new Date(),
       };
       jest.spyOn(prismaService.passwordResetToken, 'findFirst').mockResolvedValue(token as any);
-      jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue({ id: BigInt(1) } as any);
+      jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue({ id: '1' } as any);
 
       const result = await service.resetPassword({
         email: 'developer@codespace.dev',
@@ -420,7 +458,7 @@ describe('AuthService', () => {
 
     it('should throw UnauthorizedException on invalid code', async () => {
       const token = {
-        id: BigInt(1),
+        id: '1',
         email: 'developer@codespace.dev',
         codeHash: crypto.createHash('sha256').update('654321').digest('hex'),
         expiresAt: new Date(Date.now() + 15 * 60 * 1000),
@@ -435,7 +473,7 @@ describe('AuthService', () => {
           code: '123456',
           newPassword: 'NewPassword123!',
         })
-      ).rejects.toThrow('Invalid or expired reset code');
+      ).rejects.toThrow('Invalid or expired verification code');
     });
   });
 
@@ -448,7 +486,7 @@ describe('AuthService', () => {
       await expect(service.revokeSession('1', '10')).resolves.toBeUndefined();
       expect(updateManySpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ id: BigInt(10), userId: BigInt(1), revokedAt: null }),
+          where: expect.objectContaining({ id: '10', userId: '1', revokedAt: null }),
           data: { revokedAt: expect.any(Date) },
         })
       );

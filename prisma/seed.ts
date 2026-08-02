@@ -6,25 +6,34 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Starting database seed...');
 
-  const sampleEmail = 'developer@codespace.dev';
-  const samplePassword = 'Password123!';
-  const sampleName = 'Alex Dev';
+  const ARGON2_OPTIONS: argon2.Options & { raw?: boolean } = {
+    type: argon2.argon2id,
+    memoryCost: 65536,
+    timeCost: 3,
+    parallelism: 4,
+  };
 
-  // Hash password using Argon2id
-  const passwordHash = await argon2.hash(samplePassword);
+  // ---------------------------------------------------------------------------
+  // Verified user — can log in normally
+  // ---------------------------------------------------------------------------
+  const verifiedEmail = 'developer@codespace.dev';
+  const verifiedPassword = 'Password123!';
+  const verifiedName = 'Alex Dev';
+  const verifiedHash = await argon2.hash(verifiedPassword, ARGON2_OPTIONS);
 
-  // Upsert sample user
-  const user = await prisma.user.upsert({
-    where: { email: sampleEmail },
+  const verifiedUser = await prisma.user.upsert({
+    where: { email: verifiedEmail },
     update: {
-      passwordHash,
-      name: sampleName,
+      passwordHash: verifiedHash,
+      name: verifiedName,
+      emailVerifiedAt: new Date('2026-01-01T00:00:00.000Z'),
     },
     create: {
-      email: sampleEmail,
-      passwordHash,
-      name: sampleName,
+      email: verifiedEmail,
+      passwordHash: verifiedHash,
+      name: verifiedName,
       role: UserRole.USER,
+      emailVerifiedAt: new Date('2026-01-01T00:00:00.000Z'),
       settings: {
         create: {
           theme: 'cyberpunk',
@@ -37,11 +46,41 @@ async function main() {
     },
   });
 
-  console.log(`✅ Sample user created/updated successfully:`);
-  console.log(`   - ID: ${user.id}`);
-  console.log(`   - Name: ${user.name}`);
-  console.log(`   - Email: ${sampleEmail}`);
-  console.log(`   - Password: ${samplePassword}`);
+  console.log(`✅ Verified user seeded:`);
+  console.log(`   - ID:       ${verifiedUser.id}`);
+  console.log(`   - Email:    ${verifiedEmail}`);
+  console.log(`   - Password: ${verifiedPassword}`);
+  console.log(`   - Status:   Email verified ✔`);
+
+  // ---------------------------------------------------------------------------
+  // Unverified user — login should be blocked (401 Email not verified)
+  // ---------------------------------------------------------------------------
+  const unverifiedEmail = 'unverified@codespace.dev';
+  const unverifiedPassword = 'Test1234!';
+  const unverifiedName = 'Unverified User';
+  const unverifiedHash = await argon2.hash(unverifiedPassword, ARGON2_OPTIONS);
+
+  const unverifiedUser = await prisma.user.upsert({
+    where: { email: unverifiedEmail },
+    update: {
+      passwordHash: unverifiedHash,
+      name: unverifiedName,
+      emailVerifiedAt: null,
+    },
+    create: {
+      email: unverifiedEmail,
+      passwordHash: unverifiedHash,
+      name: unverifiedName,
+      role: UserRole.USER,
+      emailVerifiedAt: null, // intentionally unverified
+    },
+  });
+
+  console.log(`\n⚠️  Unverified user seeded (login should be blocked):`);
+  console.log(`   - ID:       ${unverifiedUser.id}`);
+  console.log(`   - Email:    ${unverifiedEmail}`);
+  console.log(`   - Password: ${unverifiedPassword}`);
+  console.log(`   - Status:   Email NOT verified ✗`);
 }
 
 main()

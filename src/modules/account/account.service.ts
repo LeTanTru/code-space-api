@@ -1,17 +1,14 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { Response } from 'express';
+import { Injectable, Logger } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { PrismaService } from '@/modules/prisma/prisma.service';
 import { SessionResponseDto, UserMeResponseDto } from '@/modules/auth/dto/auth-response.dto';
 import { UpdateProfileDto } from '@/modules/account/dto/update-profile.dto';
 import { ChangePasswordDto } from '@/modules/account/dto/change-password.dto';
 import { SessionService } from '@/modules/session/session.service';
-
-const ARGON2_OPTIONS: argon2.Options & { raw?: boolean } = {
-  type: argon2.argon2id,
-  memoryCost: 65536,
-  timeCost: 3,
-  parallelism: 4,
-};
+import { UnauthorizedException } from '@/common/exceptions/app.exception';
+import { ERROR_CODES } from '@/constants/error-code';
+import { ARGON2_OPTIONS } from '@/utils/crypto.util';
 
 @Injectable()
 export class AccountService {
@@ -25,8 +22,7 @@ export class AccountService {
   /**
    * Get authenticated user profile with active device sessions list
    */
-  async getProfile(userIdStr: string): Promise<UserMeResponseDto> {
-    const userId = BigInt(userIdStr);
+  async getProfile(userId: string): Promise<UserMeResponseDto> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -39,13 +35,13 @@ export class AccountService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('User account no longer exists');
+      throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND, 'User account no longer exists');
     }
 
-    const activeSessions = await this.sessionService.getSessions(userIdStr);
+    const activeSessions = await this.sessionService.getSessions(userId);
 
     return {
-      id: user.id.toString(),
+      id: user.id,
       email: user.email,
       name: user.name,
       avatarUrl: user.avatarUrl,
@@ -57,16 +53,14 @@ export class AccountService {
   /**
    * Update authenticated user's profile metadata (name, avatarUrl)
    */
-  async updateProfile(userIdStr: string, dto: UpdateProfileDto): Promise<UserMeResponseDto> {
-    const userId = BigInt(userIdStr);
-
+  async updateProfile(userId: string, dto: UpdateProfileDto): Promise<UserMeResponseDto> {
     const userExists = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { id: true },
     });
 
     if (!userExists) {
-      throw new UnauthorizedException('User account no longer exists');
+      throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND, 'User account no longer exists');
     }
 
     const dataToUpdate: { name?: string; avatarUrl?: string | null } = {};
@@ -78,47 +72,57 @@ export class AccountService {
         where: { id: userId },
         data: dataToUpdate,
       });
-      this.logger.log(`User profile updated: ${userIdStr}`);
+      this.logger.log(`User profile updated: ${userId}`);
     }
 
-    return this.getProfile(userIdStr);
+    return this.getProfile(userId);
   }
 
   /**
    * Get active logged-in device sessions for user (delegates to SessionService)
    */
-  async getSessions(userIdStr: string): Promise<SessionResponseDto[]> {
-    return this.sessionService.getSessions(userIdStr);
+  async getSessions(userId: string): Promise<SessionResponseDto[]> {
+    return this.sessionService.getSessions(userId);
   }
 
   /**
    * Revoke a specific session owned by the authenticated user (delegates to SessionService)
    */
-  async revokeSession(userIdStr: string, sessionIdStr: string): Promise<void> {
-    return this.sessionService.revokeSession(userIdStr, sessionIdStr);
+  async revokeSession(userId: string, sessionId: string): Promise<void> {
+    return this.sessionService.revokeSession(userId, sessionId);
   }
 
   /**
    * Permanently delete the authenticated user's account.
    * Requires password confirmation to prevent accidental or unauthorised deletion.
    */
-  async deleteAccount(userIdStr: string, password: string): Promise<void> {
-    const userId = BigInt(userIdStr);
-
+  async deleteAccount(userId: string, password: string, res?: Response): Promise<void> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
 
     if (!user) {
-      throw new UnauthorizedException('User account not found');
+      throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND, 'User account not found');
     }
 
     const isPasswordValid = await argon2.verify(user.passwordHash, password, ARGON2_OPTIONS);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Incorrect password');
+      throw new UnauthorizedException(ERROR_CODES.INCORRECT_PASSWORD, 'Incorrect password');
     }
 
     await this.prisma.user.delete({ where: { id: userId } });
+
+    if (res) {
+      const isProduction = process.env.NODE_ENV === 'production';
+      const apiPrefix = process.env.API_PREFIX || 'api/v1';
+      const cookiePath = apiPrefix.startsWith('/') ? apiPrefix : `/${apiPrefix}`;
+      res.clearCookie('refreshToken', {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
+        path: cookiePath,
+      });
+    }
 
     this.logger.log(`Account permanently deleted: ${user.email}`);
   }
@@ -126,15 +130,13 @@ export class AccountService {
   /**
    * Change authenticated user's password and revoke active refresh sessions
    */
-  async changePassword(userIdStr: string, dto: ChangePasswordDto): Promise<{ message: string }> {
-    const userId = BigInt(userIdStr);
-
+  async changePassword(userId: string, dto: ChangePasswordDto): Promise<{ message: string }> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
 
     if (!user) {
-      throw new UnauthorizedException('User account no longer exists');
+      throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND, 'User account no longer exists');
     }
 
     const isOldPasswordValid = await argon2.verify(
@@ -143,7 +145,7 @@ export class AccountService {
       ARGON2_OPTIONS
     );
     if (!isOldPasswordValid) {
-      throw new UnauthorizedException('Incorrect current password');
+      throw new UnauthorizedException(ERROR_CODES.INCORRECT_PASSWORD, 'Incorrect current password');
     }
 
     const newPasswordHash = await argon2.hash(dto.newPassword, ARGON2_OPTIONS);

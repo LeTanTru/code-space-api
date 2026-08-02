@@ -9,7 +9,7 @@ describe('SessionService', () => {
 
   const mockSessions = [
     {
-      id: BigInt(10),
+      id: '10',
       deviceName: 'Windows Workstation',
       userAgent: 'Mozilla/5.0 (Windows NT 10.0)',
       ipAddress: '127.0.0.1',
@@ -52,7 +52,8 @@ describe('SessionService', () => {
         id: '10',
         deviceName: 'Windows Workstation',
         userAgent: 'Mozilla/5.0 (Windows NT 10.0)',
-        ipAddress: '127.0.0.1',
+        location: expect.any(String),
+        isCurrent: true,
         createdAt: mockSessions[0].createdAt,
         expiresAt: mockSessions[0].expiresAt,
       });
@@ -65,8 +66,8 @@ describe('SessionService', () => {
 
       expect(prismaService.refreshToken.updateMany).toHaveBeenCalledWith({
         where: {
-          id: BigInt(10),
-          userId: BigInt(1),
+          id: '10',
+          userId: '1',
           revokedAt: null,
         },
         data: { revokedAt: expect.any(Date) },

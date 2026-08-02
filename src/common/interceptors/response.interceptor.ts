@@ -8,7 +8,7 @@ import { RESPONSE_STATUS, API_META_DEFAULTS } from '@/constants/response';
 
 export type ResponseEnvelope<T> = {
   status: string;
-  data: T;
+  data?: T;
   message?: string;
   meta: {
     timestamp: number;
@@ -33,7 +33,18 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, ResponseEnvelo
 
     return next.handle().pipe(
       map((response) => {
-        const finalMessage = message || response?.message;
+        let finalMessage = message;
+        let responseData = response;
+
+        if (response && typeof response === 'object' && !Array.isArray(response)) {
+          if ('message' in response && typeof response.message === 'string') {
+            if (!finalMessage) {
+              finalMessage = response.message;
+            }
+            const { message: _msg, ...rest } = response;
+            responseData = Object.keys(rest).length > 0 ? rest : null;
+          }
+        }
 
         // If response already matches response envelope structure, pass through
         if (response && response.status === RESPONSE_STATUS.SUCCESS && 'data' in response) {
@@ -49,16 +60,25 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, ResponseEnvelo
           };
         }
 
-        return {
+        const envelope: Record<string, any> = {
           status: RESPONSE_STATUS.SUCCESS,
-          data: response,
-          ...(finalMessage ? { message: finalMessage } : {}),
-          meta: {
-            timestamp: Date.now(),
-            version: API_META_DEFAULTS.VERSION,
-            path,
-          },
         };
+
+        if (responseData !== null && responseData !== undefined) {
+          envelope.data = responseData;
+        }
+
+        if (finalMessage) {
+          envelope.message = finalMessage;
+        }
+
+        envelope.meta = {
+          timestamp: Date.now(),
+          version: API_META_DEFAULTS.VERSION,
+          path,
+        };
+
+        return envelope as ResponseEnvelope<T>;
       })
     );
   }

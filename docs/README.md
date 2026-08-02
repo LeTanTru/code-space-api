@@ -25,6 +25,18 @@ This folder documents the core architecture, database models, API contracts, and
 - [health-api.md](health-api.md)  
   System health monitoring & MySQL database connection indicator (`GET /health`).
 
+- [workspace-api.md](workspace-api.md)  
+  Cloud workspace management: `GET /workspaces`, `POST /workspaces`, `PUT /workspaces/:id`, `DELETE /workspaces/:id`.
+
+- [preset-api.md](preset-api.md)  
+  Layout preset synchronization: `GET /presets`, `POST /presets`, `PUT /presets/:id`, `DELETE /presets/:id`.
+
+- [settings-api.md](settings-api.md)  
+  Desktop preferences & CLI registry sync: `GET /settings`, `PUT /settings`.
+
+- [sync-api.md](sync-api.md)  
+  Offline-first Zustand state snapshot cloud backup: `POST /sync/push`, `GET /sync/pull`.
+
 - [api-guide.md](api-guide.md)  
   Response envelope standards, error code dictionary, and links to all module-specific API docs.
 

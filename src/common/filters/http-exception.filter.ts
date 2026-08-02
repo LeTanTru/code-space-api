@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ERROR_CODES } from '@/constants/error-code';
+import { AppException } from '@/common/exceptions/app.exception';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -21,31 +22,16 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const status =
       exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const exceptionResponse: any =
-      exception instanceof HttpException ? exception.getResponse() : 'Internal server error';
-
-    let rawMessage =
-      typeof exceptionResponse === 'object' && exceptionResponse.message
-        ? exceptionResponse.message
-        : typeof exceptionResponse === 'string'
-          ? exceptionResponse
-          : 'An unexpected error occurred';
-
-    if (status === HttpStatus.TOO_MANY_REQUESTS) {
-      rawMessage = 'Too many requests, please try again after 60 seconds';
-    }
-
-    const formattedMessage = Array.isArray(rawMessage) ? rawMessage.join(', ') : rawMessage;
-    const errorCode = this.resolveErrorCode(status, rawMessage, exceptionResponse);
+    const { errorCode, message } = this.resolveErrorDetails(status, exception);
 
     this.logger.error(
-      `[${request.method}] ${request.url} - Status: ${status} - Code: ${errorCode} - Message: ${formattedMessage}`
+      `[${request.method}] ${request.url} - Status: ${status} - Code: ${errorCode} - Message: ${message}`
     );
 
     response.status(status).json({
       status: 'error',
       code: errorCode,
-      message: formattedMessage,
+      message,
       meta: {
         timestamp: Date.now(),
         path: request.url,
@@ -53,83 +39,79 @@ export class HttpExceptionFilter implements ExceptionFilter {
     });
   }
 
-  private resolveErrorCode(
+  private resolveErrorDetails(
     status: number,
-    message: string | string[],
-    exceptionResponse: any
-  ): string {
-    // 1. Explicit custom code provided in thrown exception response object
-    if (
-      typeof exceptionResponse === 'object' &&
-      exceptionResponse !== null &&
-      exceptionResponse.code
-    ) {
-      return String(exceptionResponse.code);
+    exception: unknown
+  ): { errorCode: string; message: string } {
+    // 1. Typed AppException or custom exception carrying explicit errorCode
+    if (exception instanceof AppException || (exception as any)?.errorCode) {
+      const res = (exception as HttpException).getResponse() as any;
+      return {
+        errorCode: (exception as any).errorCode ?? res?.code,
+        message: typeof res === 'object' && res?.message ? res.message : (exception as any).message,
+      };
     }
 
-    // 2. Class-validator validation pipe errors
-    if (
-      Array.isArray(message) ||
-      (typeof exceptionResponse === 'object' && exceptionResponse.error === 'Bad Request')
-    ) {
-      return ERROR_CODES.VALIDATION_ERROR;
+    // 2. Standard NestJS HttpException (e.g. class-validator ValidationPipe, guards)
+    if (exception instanceof HttpException) {
+      const res = exception.getResponse();
+      const resObj = typeof res === 'object' && res !== null ? (res as any) : {};
+
+      // Custom code passed manually via: throw new HttpException({ code: '...', message: '...' }, status)
+      if (resObj.code) {
+        return {
+          errorCode: String(resObj.code),
+          message: this.extractMessage(res, status),
+        };
+      }
+
+      // class-validator ValidationPipe produces an array of messages
+      if (Array.isArray(resObj.message) || resObj.error === 'Bad Request') {
+        return {
+          errorCode: ERROR_CODES.VALIDATION_ERROR,
+          message: Array.isArray(resObj.message)
+            ? resObj.message.join(', ')
+            : (resObj.message ?? 'Validation failed'),
+        };
+      }
+
+      // Map remaining HTTP statuses to generic codes
+      return {
+        errorCode: this.statusToGenericCode(status),
+        message: this.extractMessage(res, status),
+      };
     }
 
-    const msgLower = (Array.isArray(message) ? message.join(' ') : String(message)).toLowerCase();
+    // 3. Unknown / unhandled errors
+    this.logger.error(
+      'Unhandled exception',
+      exception instanceof Error ? exception.stack : String(exception)
+    );
+    return {
+      errorCode: ERROR_CODES.INTERNAL_SERVER_ERROR,
+      message: 'An unexpected error occurred',
+    };
+  }
 
-    // 3. Domain-specific error code mappings by status & message hints
-    if (status === HttpStatus.UNAUTHORIZED) {
-      if (msgLower.includes('credentials') || msgLower.includes('email or password')) {
-        return ERROR_CODES.INVALID_CREDENTIALS;
-      }
-      if (
-        msgLower.includes('verification') ||
-        msgLower.includes('code') ||
-        msgLower.includes('otp')
-      ) {
-        return ERROR_CODES.INVALID_VERIFICATION_CODE;
-      }
-      if (msgLower.includes('incorrect password') || msgLower.includes('current password')) {
-        return ERROR_CODES.INCORRECT_PASSWORD;
-      }
-      if (msgLower.includes('refresh token')) {
-        return ERROR_CODES.MISSING_REFRESH_TOKEN;
-      }
-      if (msgLower.includes('session')) {
-        return ERROR_CODES.INVALID_SESSION;
-      }
-      return ERROR_CODES.UNAUTHORIZED;
-    }
-
-    if (status === HttpStatus.CONFLICT) {
-      if (msgLower.includes('email')) {
-        return ERROR_CODES.EMAIL_ALREADY_EXISTS;
-      }
-      return ERROR_CODES.RESOURCE_CONFLICT;
-    }
-
-    if (status === HttpStatus.NOT_FOUND) {
-      if (msgLower.includes('session')) {
-        return ERROR_CODES.SESSION_NOT_FOUND;
-      }
-      if (msgLower.includes('user')) {
-        return ERROR_CODES.USER_NOT_FOUND;
-      }
-      return ERROR_CODES.NOT_FOUND;
-    }
-
+  private extractMessage(res: string | object, status: number): string {
     if (status === HttpStatus.TOO_MANY_REQUESTS) {
-      return ERROR_CODES.TOO_MANY_REQUESTS;
+      return 'Too many requests, please try again after 60 seconds';
     }
+    if (typeof res === 'string') return res;
+    const obj = res as any;
+    if (Array.isArray(obj.message)) return obj.message.join(', ');
+    return obj.message ?? 'An unexpected error occurred';
+  }
 
-    if (status === HttpStatus.BAD_REQUEST) {
-      return ERROR_CODES.BAD_REQUEST;
-    }
-
-    if (status === HttpStatus.FORBIDDEN) {
-      return ERROR_CODES.FORBIDDEN;
-    }
-
-    return ERROR_CODES.INTERNAL_SERVER_ERROR;
+  private statusToGenericCode(status: number): string {
+    const map: Record<number, string> = {
+      [HttpStatus.BAD_REQUEST]: ERROR_CODES.BAD_REQUEST,
+      [HttpStatus.UNAUTHORIZED]: ERROR_CODES.UNAUTHORIZED,
+      [HttpStatus.FORBIDDEN]: ERROR_CODES.FORBIDDEN,
+      [HttpStatus.NOT_FOUND]: ERROR_CODES.NOT_FOUND,
+      [HttpStatus.CONFLICT]: ERROR_CODES.RESOURCE_CONFLICT,
+      [HttpStatus.TOO_MANY_REQUESTS]: ERROR_CODES.TOO_MANY_REQUESTS,
+    };
+    return map[status] ?? ERROR_CODES.INTERNAL_SERVER_ERROR;
   }
 }

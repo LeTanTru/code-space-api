@@ -36,7 +36,8 @@ export class SessionController {
     '/api/v1/session/list'
   )
   async getSessions(@Req() req: any): Promise<SessionResponseDto[]> {
-    return this.sessionService.getSessions(req.user.id);
+    const refreshToken = (req.cookies as Record<string, string> | undefined)?.refreshToken;
+    return this.sessionService.getSessions(req.user.id, refreshToken);
   }
 
   @Delete('delete/:id')
