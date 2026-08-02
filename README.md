@@ -25,7 +25,7 @@ All core documentation for this repository lives in the [`docs/`](docs/) folder 
 - [docs/architecture.md](docs/architecture.md) — Process boundaries, layered design, security model (Argon2id + dual-token JWT), and error pipeline.
 - [docs/db.md](docs/db.md) — Complete Prisma ORM schema (`schema.prisma`) and MySQL 8.0 relational database model (ERD).
 - [docs/api-guide.md](docs/api-guide.md) — RESTful API routes, request/response contracts, and status codes.
-- [docs/sync-guide.md](docs/sync-guide.md) — Offline-first desktop cloud synchronization and Last-Write-Wins conflict resolution strategy.
+- [docs/sync-guide.md](docs/sync-guide.md) — Desktop cloud synchronization and Last-Write-Wins conflict resolution strategy.
 
 ---
 

@@ -17,7 +17,7 @@ This folder documents the core architecture, database models, API contracts, and
   Authentication specifications: `login`, `register`, `verify-email`, `refresh`, `logout`, `forgot-password`, `reset-password` — including request bodies, responses, and error codes.
 
 - [account-api.md](account-api.md)  
-  Authenticated user account management: `GET profile`, `PUT update/profile`, `POST change-password`, `DELETE delete`.
+  Authenticated user account management: `GET profile`, `PUT update`, `POST change-password`, `DELETE delete`.
 
 - [session-api.md](session-api.md)  
   Device session listing & revocation: `GET session/list`, `DELETE session/delete/:id` — including IDOR protection details and DTO field reference.
@@ -26,16 +26,25 @@ This folder documents the core architecture, database models, API contracts, and
   System health monitoring & MySQL database connection indicator (`GET /health`).
 
 - [workspace-api.md](workspace-api.md)  
-  Cloud workspace management: `GET /workspaces`, `POST /workspaces`, `PUT /workspaces/:id`, `DELETE /workspaces/:id`.
+  Cloud workspace management: `GET /workspaces`, `POST /workspaces`, `GET /workspaces/:id`, `PUT /workspaces/:id`, `DELETE /workspaces/:id`.
 
 - [preset-api.md](preset-api.md)  
-  Layout preset synchronization: `GET /presets`, `POST /presets`, `PUT /presets/:id`, `DELETE /presets/:id`.
+  Layout preset synchronization: `GET /presets`, `POST /presets`, `GET /presets/:id`, `PUT /presets/:id`, `DELETE /presets/:id`.
 
 - [settings-api.md](settings-api.md)  
-  Desktop preferences & CLI registry sync: `GET /settings`, `PUT /settings`.
+  Desktop preferences & CLI registry sync: `GET /setting/get`, `PUT /setting/update`.
+
+- [cli-api.md](cli-api.md)  
+  Custom CLI tool registry and builtin overrides: `GET /cli`, `POST /cli`, `PUT /cli/:id`, `DELETE /cli/:id`, `POST /cli/override`, `DELETE /cli/override/:cliId`.
+
+- [directory-history-api.md](directory-history-api.md)  
+  Recent working directory history sync: `GET /directory-history/list`, `POST /directory-history/upsert`, `DELETE /directory-history/delete/:id`.
+
+- [upload-api.md](upload-api.md)  
+  Image and sound file uploads: `POST /upload/image`, `POST /upload/sound`, `DELETE /upload/delete/:filename`.
 
 - [sync-api.md](sync-api.md)  
-  Offline-first Zustand state snapshot cloud backup: `POST /sync/push`, `GET /sync/pull`.
+  Zustand state snapshot cloud backup: `POST /sync/push`, `GET /sync/pull`, `GET /sync/logs`.
 
 - [api-guide.md](api-guide.md)  
   Response envelope standards, error code dictionary, and links to all module-specific API docs.
@@ -47,7 +56,7 @@ This folder documents the core architecture, database models, API contracts, and
   Complete `schema.prisma` specification for MySQL 8.0, entity relationship diagrams, indexes, and relational mappings.
 
 - [sync-guide.md](sync-guide.md)  
-  Offline-first cloud synchronization protocol connecting `code-space-desktop` (`db.json`) and `code-space-api` (MySQL), featuring Last-Write-Wins conflict resolution.
+  Desktop cloud synchronization protocol connecting `code-space-desktop` and `code-space-api` (MySQL), featuring Last-Write-Wins conflict resolution.
 
 ## Maintenance Rule
 

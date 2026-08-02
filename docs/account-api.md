@@ -28,7 +28,7 @@ All successful responses are automatically formatted by the global `ResponseInte
 | Endpoint                          |  Method  | Status |   Auth    | Success Message (`message`)                |  Rate Limit  |
 | :-------------------------------- | :------: | :----: | :-------: | :----------------------------------------- | :----------: |
 | `/api/v1/account/profile`         |  `GET`   | `200`  | 🔒 Bearer | `Get account profile successfully`         |    Global    |
-| `/api/v1/account/update/profile`  |  `PUT`   | `200`  | 🔒 Bearer | `Update account profile successfully`      |    Global    |
+| `/api/v1/account/update`          |  `PUT`   | `200`  | 🔒 Bearer | `Update account profile successfully`      |    Global    |
 | `/api/v1/account/change-password` |  `POST`  | `200`  | 🔒 Bearer | `Change password successfully`             | 10 req / 60s |
 | `/api/v1/account/delete`          | `DELETE` | `204`  | 🔒 Bearer | `Delete account successfully`              | 10 req / 60s |
 | `/api/v1/session/list`            |  `GET`   | `200`  | 🔒 Bearer | `Get list of active sessions successfully` |    Global    |
@@ -69,7 +69,7 @@ All successful responses are automatically formatted by the global `ResponseInte
 
 ---
 
-### `PUT /api/v1/account/update/profile`
+### `PUT /api/v1/account/update`
 
 **Request Body (all fields optional):**
 
@@ -94,7 +94,7 @@ All successful responses are automatically formatted by the global `ResponseInte
     "activeSessions": [...]
   },
   "message": "Update account profile successfully",
-  "meta": { "timestamp": 1785564382331, "version": "v1", "path": "/api/v1/account/update/profile" }
+  "meta": { "timestamp": 1785564382331, "version": "v1", "path": "/api/v1/account/update" }
 }
 ```
 

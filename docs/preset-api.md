@@ -1,4 +1,4 @@
-# CodeSpace API — Layout Preset Module Documentation (`/api/v1/presets`)
+# CodeSpace API — Layout Preset Module Documentation (`/api/v1/preset`)
 
 This document details the REST contracts for creating, retrieving, updating, and deleting custom layout presets across user devices.
 
@@ -14,7 +14,7 @@ This document details the REST contracts for creating, retrieving, updating, and
   "meta": {
     "timestamp": 1785564382331,
     "version": "v1",
-    "path": "/api/v1/presets"
+    "path": "/api/v1/preset/<action>"
   }
 }
 ```
@@ -23,18 +23,19 @@ This document details the REST contracts for creating, retrieving, updating, and
 
 ## Preset Endpoints Overview
 
-| Endpoint              |  Method  | Status |   Auth    | Success Message (`message`)  | Rate Limit |
-| :-------------------- | :------: | :----: | :-------: | :--------------------------- | :--------: |
-| `/api/v1/presets`     |  `GET`   | `200`  | 🔒 Bearer | `Get presets successfully`   |   Global   |
-| `/api/v1/presets`     |  `POST`  | `201`  | 🔒 Bearer | `Create preset successfully` |   Global   |
-| `/api/v1/presets/:id` |  `PUT`   | `200`  | 🔒 Bearer | `Update preset successfully` |   Global   |
-| `/api/v1/presets/:id` | `DELETE` | `204`  | 🔒 Bearer | `Delete preset successfully` |   Global   |
+| Endpoint                    |  Method  | Status |   Auth    | Success Message (`message`)       | Rate Limit |
+| :-------------------------- | :------: | :----: | :-------: | :-------------------------------- | :--------: |
+| `/api/v1/preset/list`       |  `GET`   | `200`  | 🔒 Bearer | `Get presets successfully`        |   Global   |
+| `/api/v1/preset/create`     |  `POST`  | `201`  | 🔒 Bearer | `Create preset successfully`      |   Global   |
+| `/api/v1/preset/get/:id`    |  `GET`   | `200`  | 🔒 Bearer | `Get preset details successfully` |   Global   |
+| `/api/v1/preset/update/:id` |  `PUT`   | `200`  | 🔒 Bearer | `Update preset successfully`      |   Global   |
+| `/api/v1/preset/delete/:id` | `DELETE` | `204`  | 🔒 Bearer | `Delete preset successfully`      |   Global   |
 
 ---
 
 ## Endpoint Details & Examples
 
-### `GET /api/v1/presets`
+### `GET /api/v1/preset/list`
 
 Retrieves all saved layout presets for the logged-in user.
 
@@ -55,13 +56,13 @@ Retrieves all saved layout presets for the logged-in user.
     }
   ],
   "message": "Get presets successfully",
-  "meta": { "timestamp": 1785564382331, "version": "v1", "path": "/api/v1/presets" }
+  "meta": { "timestamp": 1785564382331, "version": "v1", "path": "/api/v1/preset/list" }
 }
 ```
 
 ---
 
-### `POST /api/v1/presets`
+### `POST /api/v1/preset/create`
 
 Saves a custom layout preset.
 
@@ -93,13 +94,25 @@ Saves a custom layout preset.
     "updatedAt": "2026-08-02T09:00:00.000Z"
   },
   "message": "Create preset successfully",
-  "meta": { "timestamp": 1785564382331, "version": "v1", "path": "/api/v1/presets" }
+  "meta": { "timestamp": 1785564382331, "version": "v1", "path": "/api/v1/preset/create" }
 }
 ```
 
 ---
 
-### `DELETE /api/v1/presets/:id`
+### `GET /api/v1/preset/get/:id`
+
+Retrieves details of a specific layout preset by ID.
+
+---
+
+### `PUT /api/v1/preset/update/:id`
+
+Updates an existing layout preset configuration.
+
+---
+
+### `DELETE /api/v1/preset/delete/:id`
 
 Deletes a saved layout preset.
 
