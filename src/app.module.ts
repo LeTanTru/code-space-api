@@ -8,6 +8,7 @@ import { HealthModule } from '@/modules/health/health.module';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { AccountModule } from '@/modules/account/account.module';
 import { SessionModule } from '@/modules/session/session.module';
+import { SettingsModule } from '@/modules/settings/settings.module';
 import { ResponseInterceptor } from '@/common/interceptors/response.interceptor';
 import { ONE_MINUTE_IN_MS } from '@/constants/time';
 
@@ -55,6 +56,7 @@ import { ONE_MINUTE_IN_MS } from '@/constants/time';
     AuthModule,
     AccountModule,
     SessionModule,
+    SettingsModule,
   ],
   providers: [
     // Global Response Interceptor (DI-aware, supports @ResponseMessage() decorator)

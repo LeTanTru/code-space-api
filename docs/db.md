@@ -11,7 +11,7 @@
 ```mermaid
 erDiagram
     users {
-        bigint id PK
+        varchar id PK
         varchar email UK
         varchar password_hash
         varchar name
@@ -23,8 +23,8 @@ erDiagram
     }
 
     refresh_tokens {
-        bigint id PK
-        bigint user_id FK
+        varchar id PK
+        varchar user_id FK
         varchar token_hash UK
         varchar device_name
         varchar user_agent
@@ -35,7 +35,7 @@ erDiagram
     }
 
     email_verifications {
-        bigint id PK
+        varchar id PK
         varchar email
         varchar code_hash
         datetime expires_at
@@ -44,7 +44,7 @@ erDiagram
     }
 
     password_reset_tokens {
-        bigint id PK
+        varchar id PK
         varchar email
         varchar code_hash
         datetime expires_at
@@ -53,8 +53,8 @@ erDiagram
     }
 
     user_settings {
-        bigint id PK
-        bigint user_id FK, UK
+        varchar id PK
+        varchar user_id FK, UK
         varchar theme
         varchar font
         enum tab_orientation
@@ -71,7 +71,7 @@ erDiagram
 
     custom_sounds {
         varchar id PK
-        bigint user_id FK
+        varchar user_id FK
         varchar name
         longtext data_url
         varchar mime_type
@@ -81,7 +81,7 @@ erDiagram
 
     cli_tools {
         varchar id PK
-        bigint user_id FK
+        varchar user_id FK
         varchar name
         varchar command
         varchar check_command
@@ -92,8 +92,8 @@ erDiagram
     }
 
     cli_builtin_overrides {
-        bigint id PK
-        bigint user_id FK
+        varchar id PK
+        varchar user_id FK
         varchar cli_id FK
         varchar name
         varchar command
@@ -104,7 +104,7 @@ erDiagram
 
     workspace_presets {
         varchar id PK
-        bigint user_id FK
+        varchar user_id FK
         varchar name
         text description
         varchar color
@@ -119,7 +119,7 @@ erDiagram
     }
 
     preset_terminals {
-        bigint id PK
+        varchar id PK
         varchar preset_id FK
         varchar cli FK
         varchar cwd
@@ -129,16 +129,16 @@ erDiagram
     }
 
     directory_history {
-        bigint id PK
-        bigint user_id FK
+        varchar id PK
+        varchar user_id FK
         varchar path
         smallint position
         datetime updated_at
     }
 
     sync_logs {
-        bigint id PK
-        bigint user_id FK
+        varchar id PK
+        varchar user_id FK
         varchar client_device_id
         varchar client_version
         enum status
@@ -211,7 +211,7 @@ enum SyncStatus {
 // ----------------------------------------------------------------------------
 
 model User {
-  id              BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  id              String    @id @default(uuid()) @db.VarChar(36)
   email           String    @unique @db.VarChar(255)
   passwordHash    String    @map("password_hash") @db.VarChar(255)
   name            String    @db.VarChar(255)
@@ -234,8 +234,8 @@ model User {
 }
 
 model RefreshToken {
-  id         BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
-  userId     BigInt    @map("user_id") @db.UnsignedBigInt
+  id         String    @id @default(uuid()) @db.VarChar(36)
+  userId     String    @map("user_id") @db.VarChar(36)
   tokenHash  String    @unique @map("token_hash") @db.VarChar(255)
   deviceName String?   @map("device_name") @db.VarChar(255)
   userAgent  String?   @map("user_agent") @db.VarChar(255)
@@ -251,7 +251,7 @@ model RefreshToken {
 }
 
 model EmailVerification {
-  id        BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  id        String    @id @default(uuid()) @db.VarChar(36)
   email     String    @db.VarChar(255)
   codeHash  String    @map("code_hash") @db.VarChar(64)
   expiresAt DateTime  @map("expires_at") @db.DateTime(3)
@@ -263,7 +263,7 @@ model EmailVerification {
 }
 
 model PasswordResetToken {
-  id        BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  id        String    @id @default(uuid()) @db.VarChar(36)
   email     String    @db.VarChar(255)
   codeHash  String    @map("code_hash") @db.VarChar(64)
   expiresAt DateTime  @map("expires_at") @db.DateTime(3)
@@ -279,8 +279,8 @@ model PasswordResetToken {
 // ----------------------------------------------------------------------------
 
 model UserSettings {
-  id                   BigInt              @id @default(autoincrement()) @db.UnsignedBigInt
-  userId               BigInt              @unique @map("user_id") @db.UnsignedBigInt
+  id                   String              @id @default(uuid()) @db.VarChar(36)
+  userId               String              @unique @map("user_id") @db.VarChar(36)
   theme                String              @default("cyberpunk") @db.VarChar(64)
   font                 String              @default("inter") @db.VarChar(64)
   tabOrientation       TabOrientation      @default(horizontal) @map("tab_orientation")
@@ -305,7 +305,7 @@ model UserSettings {
 
 model CustomSound {
   id        String   @id @db.VarChar(128)
-  userId    BigInt   @map("user_id") @db.UnsignedBigInt
+  userId    String   @map("user_id") @db.VarChar(36)
   name      String   @db.VarChar(255)
   dataUrl   String   @map("data_url") @db.LongText
   mimeType  String   @default("audio/mpeg") @map("mime_type") @db.VarChar(64)
@@ -324,7 +324,7 @@ model CustomSound {
 
 model CliTool {
   id           String   @id @db.VarChar(128)
-  userId       BigInt?  @map("user_id") @db.UnsignedBigInt
+  userId       String?  @map("user_id") @db.VarChar(36)
   name         String   @db.VarChar(255)
   command      String   @db.VarChar(512)
   checkCommand String?  @map("check_command") @db.VarChar(512)
@@ -343,8 +343,8 @@ model CliTool {
 }
 
 model CliBuiltinOverride {
-  id           BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
-  userId       BigInt   @map("user_id") @db.UnsignedBigInt
+  id           String   @id @default(uuid()) @db.VarChar(36)
+  userId       String   @map("user_id") @db.VarChar(36)
   cliId        String   @map("cli_id") @db.VarChar(128)
   name         String?  @db.VarChar(255)
   command      String?  @db.VarChar(512)
@@ -365,7 +365,7 @@ model CliBuiltinOverride {
 
 model WorkspacePreset {
   id             String   @id @db.VarChar(128)
-  userId         BigInt   @map("user_id") @db.UnsignedBigInt
+  userId         String   @map("user_id") @db.VarChar(36)
   name           String   @db.VarChar(255)
   description    String?  @db.Text
   color          String   @default("#6366f1") @db.VarChar(7)
@@ -387,7 +387,7 @@ model WorkspacePreset {
 }
 
 model PresetTerminal {
-  id          BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  id          String  @id @default(uuid()) @db.VarChar(36)
   presetId    String  @map("preset_id") @db.VarChar(128)
   cli         String? @db.VarChar(128)
   cwd         String  @db.VarChar(1024)
@@ -407,8 +407,8 @@ model PresetTerminal {
 // ----------------------------------------------------------------------------
 
 model DirectoryHistory {
-  id        BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
-  userId    BigInt   @map("user_id") @db.UnsignedBigInt
+  id        String   @id @default(uuid()) @db.VarChar(36)
+  userId    String   @map("user_id") @db.VarChar(36)
   path      String   @db.VarChar(512)
   position  Int      @default(0) @db.UnsignedSmallInt
   updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
@@ -425,8 +425,8 @@ model DirectoryHistory {
 // ----------------------------------------------------------------------------
 
 model SyncLog {
-  id             BigInt     @id @default(autoincrement()) @db.UnsignedBigInt
-  userId         BigInt     @map("user_id") @db.UnsignedBigInt
+  id             String     @id @default(uuid()) @db.VarChar(36)
+  userId         String     @map("user_id") @db.VarChar(36)
   clientDeviceId String     @map("client_device_id") @db.VarChar(255)
   clientVersion  String     @map("client_version") @db.VarChar(64)
   status         SyncStatus @default(SUCCESS)
@@ -438,4 +438,8 @@ model SyncLog {
   @@index([userId, syncedAt], map: "idx_sync_logs_user_date")
   @@map("sync_logs")
 }
+```
+
+```
+
 ```

@@ -82,5 +82,9 @@ Detailed REST endpoint contracts are documented in module-specific guides:
 - **Authentication**: [`docs/auth-api.md`](auth-api.md) — `login`, `register`, `verify-email`, `refresh`, `logout`, `forgot-password`, `reset-password`
 - **Account Management**: [`docs/account-api.md`](account-api.md) — `GET profile`, `PUT update/profile`, `POST change-password`, `DELETE delete`
 - **Session Management**: [`docs/session-api.md`](session-api.md) — `GET session/list`, `DELETE session/delete/:id`
+- **Workspace Sync**: [`docs/workspace-api.md`](workspace-api.md) — `GET`, `POST`, `PUT`, `DELETE /workspaces`
+- **Layout Presets**: [`docs/preset-api.md`](preset-api.md) — `GET`, `POST`, `PUT`, `DELETE /presets`
+- **Settings Sync**: [`docs/settings-api.md`](settings-api.md) — `GET`, `PUT /settings`
+- **Full State Backup**: [`docs/sync-api.md`](sync-api.md) — `POST /sync/push`, `GET /sync/pull`
 - **Health Indicators**: [`docs/health-api.md`](health-api.md) — `GET /health`
 - **Rate Limiting**: [`docs/rate-limiter.md`](rate-limiter.md) — Throttling limits & HTTP 429 specs

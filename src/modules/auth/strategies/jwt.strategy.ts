@@ -6,13 +6,13 @@ import { PrismaService } from '@/modules/prisma/prisma.service';
 import { UnauthorizedException } from '@/common/exceptions/app.exception';
 import { ERROR_CODES } from '@/constants/error-code';
 
-export interface JwtPayload {
+export type JwtPayload = {
   sub: string;
   email: string;
   role: string;
   iat?: number;
   exp?: number;
-}
+};
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {

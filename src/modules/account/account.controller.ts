@@ -51,7 +51,7 @@ export class AccountController {
     return this.accountService.getProfile(req.user.id);
   }
 
-  @Put('update/profile')
+  @Put('update')
   @ResponseMessage('Update account profile successfully')
   @ApiOperation({
     summary: 'Update User Profile',
@@ -63,7 +63,7 @@ export class AccountController {
     UserMeResponseDto,
     HttpStatus.OK,
     'Update account profile successfully',
-    '/api/v1/account/update/profile'
+    '/api/v1/account/update'
   )
   async updateProfile(@Body() dto: UpdateProfileDto, @Req() req: any): Promise<UserMeResponseDto> {
     return this.accountService.updateProfile(req.user.id, dto);
